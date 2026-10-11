@@ -1,0 +1,5 @@
+dist
+public/vendor
+node_modules
+package-lock.json
+*.md

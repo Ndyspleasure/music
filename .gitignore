@@ -1,0 +1,29 @@
+# Dependencies & build output
+node_modules
+dist
+dist-ssr
+*.local
+
+# Aset vendor yang disalin otomatis dari node_modules saat dev/build
+public/vendor
+
+# Test output
+test-results
+playwright-report
+coverage
+
+# Env (jangan commit rahasia)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.sw?
+.vercel

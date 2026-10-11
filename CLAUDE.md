@@ -114,7 +114,7 @@ Gunakan urutan berikut ketika keputusan berbeda:
 1. Instruksi sistem/platform dan kebijakan keamanan yang berlaku.
 2. Instruksi pengguna terbaru yang eksplisit.
 3. `CLAUDE.md` ini.
-4. `arsitektur.md` sebagai referensi desain teknis proyek.
+4. `PROJECT.md` (spesifikasi produk) dan `arsitektur.md` (referensi desain teknis proyek).
 5. `README.md`, keputusan arsitektur lain, kode yang benar-benar ada, test, dan konfigurasi aktif.
 6. Asumsi atau preferensi yang belum dibuktikan.
 
@@ -248,6 +248,7 @@ Sebelum menyatakan selesai, periksa `git diff --check`, perubahan yang tidak ter
 Dokumen yang diutamakan:
 
 - `CLAUDE.md` — aturan kerja agent dan standar proyek.
+- `PROJECT.md` — spesifikasi produk, alur pengguna, scope, roadmap, dan acceptance criteria.
 - `arsitektur.md` — gambaran teknis, modul, alur data, dan keputusan arsitektur.
 - `README.md` — pengenalan proyek, persyaratan, cara instalasi, menjalankan lokal, test, dan deploy.
 - `ROADMAP.md` — milestone dan status pengembangan jika scope proyek mulai bertambah.
