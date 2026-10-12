@@ -2,7 +2,7 @@
 
 > Dokumen fondasi untuk repository baru. Dokumen ini mendefinisikan rancangan teknis awal, batasan, struktur kode, alur audio/gesture, serta strategi deploy ke Vercel. Implementasi sebaiknya mengikuti dokumen ini dan memperbaruinya saat keputusan arsitektur berubah.
 
-- **Status:** Draft arsitektur awal
+- **Status:** Diimplementasikan (v1.0). Bagian bertanda *Implementasi* mencatat keputusan aktual; lihat juga §16.
 - **Target deploy:** Vercel (static frontend)
 - **Pendekatan:** Browser-first, client-side processing
 - **Sasaran instrumen:** 128 program General MIDI (GM) sebagai katalog dasar, ditambah sound pack opsional
@@ -36,8 +36,10 @@ Aplikasi web musik virtual yang memungkinkan pengguna memainkan instrumen dengan
 
 | Area | Pilihan awal | Alasan |
 |---|---|---|
-| Framework | React + Vite + TypeScript | Frontend modular, build statis, tipe data untuk event gesture/audio |
-| Styling | Tailwind CSS | UI dapat dikembangkan cepat dan konsisten |
+| Framework | React 19 + Vite 8 + TypeScript 6 (strict, `noUncheckedIndexedAccess`) | Frontend modular, build statis, tipe data untuk event gesture/audio |
+| Styling | Tailwind CSS 4 (`@tailwindcss/vite`) | UI dapat dikembangkan cepat dan konsisten |
+| Kualitas | oxlint (template resmi Vite), Prettier, Vitest, Playwright | Lint cepat; unit test logika; e2e di Chromium nyata dengan kamera palsu |
+| State UI | Store kecil berbasis `useSyncExternalStore` (`src/state`) | Tanpa dependensi tambahan; data per-frame tidak lewat React |
 | Hand tracking | MediaPipe Tasks Vision — Hand Landmarker | Menghasilkan landmark tangan dari video di browser |
 | Audio engine | Adapter `InstrumentEngine`; proof of concept dengan `spessasynth_lib` | Dapat memuat SoundFont SF2/SF3/DLS dan mengirim pesan program/note melalui Web Audio; adapter mencegah aplikasi bergantung langsung pada satu library |
 | Audio worklet | AudioWorklet yang disediakan engine bila konfigurasi engine memerlukannya | Membantu pemrosesan audio terpisah dari UI dan mengurangi gangguan akibat pekerjaan main thread |
@@ -219,16 +221,29 @@ Semua kontrol synthesizer harus melalui satu interface internal supaya engine bi
 
 ```ts
 export interface InstrumentEngine {
-  initialize(): Promise<void>;
-  loadSoundBank(soundBankId: string): Promise<void>;
-  selectInstrument(instrumentId: string): Promise<void>;
-  noteOn(noteNumber: number, velocity?: number, channel?: number): void;
-  noteOff(noteNumber: number, channel?: number): void;
+  initialize(): Promise<void>;          // dipanggil dari handler klik
+  resume(): Promise<void>;
+  loadSoundBank(o: SoundBankLoadOptions): Promise<PresetInfo[]>; // URL atau buffer, bankOffset, progres
+  removeSoundBank(id: string): Promise<void>;
+  getPresets(): PresetInfo[];
+  selectPatch(channel: number, patch: MidiPatch): void; // bank MSB/LSB + program 0–127
+  setChannelIsDrum(channel: number, isDrum: boolean): void;
+  noteOn(channel: number, note: number, velocity: number, time?: number): void;
+  noteOff(channel: number, note: number, time?: number): void;
+  controlChange(channel: number, cc: number, value: number, time?: number): void;
   setVolume(value: number): void;
+  setEffects(e: EffectSettings): void;
+  channelNotesOff(channel: number, time?: number): void;
   allNotesOff(): void;
+  currentTime(): number;                // jam audio untuk penjadwalan presisi (metronom/looper)
+  getOutputLevel(): number;
+  getSnapshot(): EngineSnapshot;
+  subscribe(l: (s: EngineSnapshot) => void): () => void;
   dispose(): Promise<void>;
 }
 ```
+
+*Implementasi:* kontrak di atas (`src/services/audio/InstrumentEngine.ts`) menggantikan draf awal. Pemetaan `instrumentId → patch` dilakukan oleh katalog (`instrumentPatch`) di controller, sehingga engine tetap tidak tahu soal ID UI. Parameter `time` dipakai metronom dan looper untuk penjadwalan lookahead pada jam AudioContext. Implementasi: `SpessaSynthEngine` (AudioWorklet; graf `synth → low-pass → dry + delay → master → analyser`) dan `MockInstrumentEngine` untuk test.
 
 Implementasi adapter harus menangani pemetaan `instrumentId` ke bank/program MIDI, pengaturan kanal, status loading, error saat SoundFont gagal dimuat, dan pelepasan resource. API di atas bersifat kontrak internal; sesuaikan detail implementasi setelah proof of concept dengan versi library yang benar-benar dipasang.
 
@@ -594,3 +609,60 @@ Gunakan dokumentasi versi terbaru saat implementasi; detail API dan batas hostin
 8. **Deploy harus bisa diulang.** Lockfile, perintah build, dan konfigurasi proyek harus berada di repository.
 
 Dokumen ini menjadi rujukan awal. Jika implementasi memilih engine, model, atau hosting aset yang berbeda, perbarui bagian keputusan arsitektur, struktur folder, strategi deploy, risiko, dan referensi agar tetap sesuai dengan sistem yang sebenarnya.
+
+---
+
+## 16. Catatan Implementasi (v1.0)
+
+Bagian ini mencatat keadaan kode yang sebenarnya. Bila berbeda dengan bagian sebelumnya, bagian inilah yang berlaku.
+
+### Struktur folder aktual
+
+```text
+public/
+  models/hand_landmarker.task          # MediaPipe, Apache-2.0
+  soundfonts/GeneralUser-GS.sf3        # + GeneralUser-GS-LICENSE.txt
+  vendor/                              # DISALIN saat dev/build dari node_modules (gitignored)
+scripts/
+  build-soundfont.mjs                  # SF2 → SF3 (ffmpeg/libvorbis)
+  vite-vendor-assets.ts                # plugin Vite penyalin WASM MediaPipe & worklet SpessaSynth
+src/
+  app/            App.tsx, bootstrap.ts (instance tunggal controller/engine), context.tsx
+  components/     camera/ (StagePanel, StageOverlay canvas), instrument-picker/, music-controls/,
+                  note-visualizer/ (piano, pad, meter), status/, dialogs/, layout/, ui/
+  config/         app-settings.ts (+validasi), gesture-config.ts (semua tuning), assets.ts (URL aset tervalidasi)
+  data/           instruments/gm-programs.ts (128 GM, formatProgramNumber), drum-map.ts
+  features/
+    hand-tracking/   one-euro-filter, landmarks, gesture-interpreter
+    music-theory/    notes, scales, note-layout (+ZoneTracker), chords
+    instruments/     catalog (ketersediaan nyata dari preset bank)
+    performance/     note-manager, gesture-performer, performance-controller (orkestrator)
+    recording/       metronome, looper, midi-export
+  services/       audio/, camera/, tracking/, storage/
+  state/          create-store.ts, app-state.ts
+e2e/              Playwright (Chromium, kamera palsu)
+```
+
+`arsitektur.md` tetap di root (tidak ada salinan di `docs/`).
+
+### Alur data per frame
+
+`MediaPipeHandTracker` (requestVideoFrameCallback, hanya saat frame baru) → `toTrackingResult` (tipe internal; label handedness dibalik karena input tidak di-mirror) → `GestureInterpreter` (mirror ke ruang tampilan, One Euro, pinch hysteresis, strike/swipe, grace hand-lost) → `GesturePerformer` (zona + hysteresis, akor, drum, ekspresi CC11) → `NoteManager` (kepemilikan `owner × channel × note`, refcount) → `InstrumentEngine`. Overlay canvas menerima snapshot lewat `controller.onFrame` dan menggambar di rAF. React hanya menerima perubahan berfrekuensi rendah: jumlah tangan, note aktif, dan status.
+
+### Kanal MIDI
+
+| Kanal (0-based) | Pemakaian |
+|---|---|
+| 0 | Melodi/akor live |
+| 9 | Drum live (kit pilihan) |
+| 15 | Metronom (diset drum, kit Standard) |
+| 1–8, 10–14 | Playback layer looper (dialokasikan per layer agar timbre layer tetap) |
+
+### Keputusan teknis
+
+1. **SoundFont:** GeneralUser GS v2.0.3, dikonversi ke SF3 (32 → 8 MB). Lisensinya mengizinkan redistribusi dan meminta salinan lokal, bukan hotlink.
+2. **Bundle:** `spessasynth_lib` dan `@mediapipe/tasks-vision` di-import dinamis. Bundle awal sekitar 108 kB gzip, dan synth dimuat setelah klik pertama. `AudioContext` dibuat sinkron di dalam handler klik sebelum `await` apa pun.
+3. **Aset vendor:** WASM MediaPipe dan worklet SpessaSynth tidak di-commit. Plugin Vite menyalinnya dari `node_modules` agar versinya terkunci oleh lockfile.
+4. **Sound pack pengguna:** dimuat dari file lokal dengan `bankOffset = 64`, sehingga presetnya muncul sebagai sumber "custom-pack" tanpa menimpa GM. URL arbitrer dari pengguna sengaja tidak didukung.
+5. **Pembersihan note:** `NoteManager.releaseChannel` dijalankan sebelum ganti program atau kit. Pemilik `hand-*` dilepas saat hand-lost, stop sesi, kamera terputus, atau tab tersembunyi. `panic()` dan Esc menjalankan all-notes-off. Looper membungkam kanal layer dua kali (segera dan setelah jendela lookahead) untuk menutup note yang sudah terjadwal.
+6. **Hook debug** `?debug=1` mengekspos `window.__gestura` hanya untuk e2e (menyuntikkan landmark sintetis ke pipeline asli). Hook ini tidak memberi akses ke data sensitif.

@@ -89,9 +89,9 @@ Proyek ini mencoba memberikan cara alternatif untuk mengeksplorasi suara dan mel
 
 ## 5. Ruang Lingkup Produk
 
-### 5.1 Target
+### 5.1 Target MVP
 
-yang disarankan:
+Cakupan minimum yang disarankan:
 
 1. Aplikasi web responsif yang dapat dibuild dan dideploy di Vercel.
 2. Tombol eksplisit untuk memulai dan menghentikan sesi.
@@ -105,7 +105,7 @@ yang disarankan:
 10. Status loading, error, dan cleanup yang benar—terutama memastikan tidak ada nada terus berbunyi ketika sesi dihentikan.
 11. Pengujian beberapa keluarga preset General MIDI sebelum memperluas katalog.
 
-### 5.2 Target 
+### 5.2 Target lanjutan (pasca-MVP)
 
 - Katalog lengkap 128 program General MIDI.
 - Mode drum dengan mapping perkusi khusus.
@@ -116,7 +116,7 @@ yang disarankan:
 - Penambahan sound pack dan variasi preset di luar katalog GM dasar.
 - Peningkatan performa dan kompatibilitas perangkat.
 
-### 5.3 Fitur lanjutan 
+### 5.3 Fitur lanjutan (opsional)
 Fitur ini bukan syarat dan tidak boleh menunda fungsi inti tanpa alasan yang kuat:
 
 - Perekaman atau playback frasa musik.
