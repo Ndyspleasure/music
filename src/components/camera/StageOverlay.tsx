@@ -204,6 +204,18 @@ function drawFingerLabels(
       ctx.fill();
       ctx.fillStyle = on ? "#111" : "rgba(238,241,248,0.95)";
       ctx.fillText(label, x, y);
+      // Bilah kedekatan: penuh = menempel; garis tengah = ambang terdeteksi.
+      const score = hand.fingerScores[FINGERS.indexOf(finger)] ?? Infinity;
+      const fill = Math.min(1, Math.max(0, 1.5 - score));
+      const bw = 26 * dpr;
+      const bh = 4 * dpr;
+      const by = y + 12 * dpr;
+      ctx.fillStyle = "rgba(10,12,20,0.75)";
+      ctx.fillRect(x - bw / 2, by, bw, bh);
+      ctx.fillStyle = on ? `rgb(${SPOT})` : score < 1 ? `rgba(${SPOT},0.75)` : "rgba(238,241,248,0.6)";
+      ctx.fillRect(x - bw / 2, by, bw * fill, bh);
+      ctx.fillStyle = "rgba(255,255,255,0.8)";
+      ctx.fillRect(x - dpr / 2, by - dpr, dpr, bh + 2 * dpr);
     }
   }
   ctx.textBaseline = "alphabetic";

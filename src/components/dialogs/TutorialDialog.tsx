@@ -91,6 +91,10 @@ export function TutorialDialog() {
           <li>
             Lebih suka memilih nada dengan posisi tangan? Ganti “Cara memilih nada” ke “Posisi tangan” di tab Musik.
           </li>
+          <li>
+            Jari manis sering ikut jari tengah. Saat menyentuh satu jari, biarkan jari lain tetap lurus dan agak
+            renggang. Bilah kecil di bawah tiap label jari menunjukkan seberapa dekat jari itu ke ibu jari.
+          </li>
           <li>Esc menghentikan semua bunyi kapan saja.</li>
         </ul>
       </div>

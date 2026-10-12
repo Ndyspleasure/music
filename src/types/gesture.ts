@@ -55,6 +55,11 @@ export interface HandFrameState {
   pinching: boolean;
   /** Jari yang sedang menyentuh ibu jari (mode input "Jari"), atau null. */
   finger: FingerId | null;
+  /**
+   * Kedekatan tiap jari ke ibu jari (urutan `FINGERS`), dinormalisasi terhadap ambang:
+   * < 1 = cukup dekat untuk dihitung menyentuh.
+   */
+  fingerScores: number[];
   /** Landmark mentah dalam ruang tampilan (untuk menggambar kerangka tangan). */
   landmarks: Landmark[];
 }
