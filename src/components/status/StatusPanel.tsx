@@ -67,9 +67,9 @@ export function StatusPanel() {
   ];
 
   return (
-    <dl className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite">
+    <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite">
       {rows.map((r) => (
-        <div key={r.label} className="flex items-center gap-2 rounded-xl bg-stage-900 px-3 py-2">
+        <div key={r.label} className="flex min-w-0 items-center gap-2 rounded-xl bg-stage-900 px-3 py-2">
           <StatusDot tone={r.tone} />
           <dt className="text-xs text-ink-faint">{r.label}</dt>
           <dd className="min-w-0 flex-1 truncate text-right text-xs font-medium text-ink" title={r.value}>

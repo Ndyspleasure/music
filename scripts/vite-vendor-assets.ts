@@ -40,7 +40,9 @@ export function copyVendorAssets(): void {
 export function vendorAssets(): Plugin {
   return {
     name: "vendor-assets",
-    buildStart() {
+    // Hook `config` berjalan sebelum Vite memindai folder public. Bila disalin di `buildStart`,
+    // `npm run dev` pertama setelah clone menyajikan 404 untuk WASM MediaPipe.
+    config() {
       copyVendorAssets();
     },
   };

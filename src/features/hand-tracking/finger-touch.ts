@@ -11,6 +11,11 @@ export const FINGER_REACH: Record<FingerId, number> = { index: 1, middle: 1, rin
 export const FINGER_LOCK_SCORE = 0.4;
 /** Untuk pindah jari, skor kandidat harus lebih kecil dari skor jari aktif minus selisih ini. */
 export const FINGER_SWITCH_MARGIN = 0.25;
+/**
+ * Kandidat yang unggul sejauh ini dari jari terdekat berikutnya tidak ambigu, jadi diterima
+ * di frame pertama tanpa menunggu konfirmasi (hemat satu frame kamera ≈ 33 ms).
+ */
+export const FINGER_CLEAR_MARGIN = 0.5;
 /** Jumlah frame berturut-turut kandidat harus tetap terdekat sebelum diterima. */
 export const FINGER_CONFIRM_FRAMES = 2;
 
@@ -61,6 +66,8 @@ export class FingerTouchDetector {
       scores[f] = Number.isFinite(r) ? r / (pinchStart * FINGER_REACH[f]) : Infinity;
       if (scores[f] < scores[candidate]) candidate = f;
     }
+    let runnerUp = Infinity;
+    for (const f of FINGERS) if (f !== candidate && scores[f] < runnerUp) runnerUp = scores[f];
     this.lastScores = scores;
     const change: FingerTouchChange = {};
     const releaseScore = pinchRelease / pinchStart;
@@ -87,7 +94,8 @@ export class FingerTouchDetector {
     }
 
     if (scores[candidate] < 1) {
-      if (scores[candidate] < FINGER_LOCK_SCORE || this.confirm(candidate)) {
+      const clear = runnerUp - scores[candidate] >= FINGER_CLEAR_MARGIN;
+      if (scores[candidate] < FINGER_LOCK_SCORE || clear || this.confirm(candidate)) {
         change.down = candidate;
         this.activeFinger = candidate;
         this.clearPending();
