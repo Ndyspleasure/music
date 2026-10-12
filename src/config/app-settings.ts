@@ -1,3 +1,4 @@
+import { NOTE_NAMINGS, type NoteNaming } from "../features/music-theory/note-naming";
 import { isScaleId } from "../features/music-theory/scales";
 import type { ChordType, PlayMode, ScaleId } from "../types/music";
 import { DEFAULT_EFFECTS, type EffectSettings } from "../services/audio/InstrumentEngine";
@@ -51,6 +52,8 @@ export interface AppSettings {
   /** Tampilkan panduan tangan bergambar (SVG) di atas area kamera. */
   showHandGuide: boolean;
   showNoteNames: boolean;
+  /** Format nama nada: huruf (C D E), solmisasi (do re mi), atau angka (1 2 3). */
+  noteNaming: NoteNaming;
   preferFlats: boolean;
   metronome: MetronomeSettings;
   tutorialDone: boolean;
@@ -80,6 +83,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showLandmarks: true,
   showHandGuide: true,
   showNoteNames: true,
+  noteNaming: "letter",
   preferFlats: false,
   metronome: { enabled: false, bpm: 100, beatsPerBar: 4, volume: 0.7, countIn: true, quantizeLoop: true },
   tutorialDone: false,
@@ -143,6 +147,7 @@ export function sanitizeSettings(input: unknown): AppSettings {
     showLandmarks: bool(s.showLandmarks, d.showLandmarks),
     showHandGuide: bool(s.showHandGuide, d.showHandGuide),
     showNoteNames: bool(s.showNoteNames, d.showNoteNames),
+    noteNaming: NOTE_NAMINGS.includes(s.noteNaming as NoteNaming) ? (s.noteNaming as NoteNaming) : d.noteNaming,
     preferFlats: bool(s.preferFlats, d.preferFlats),
     metronome: {
       enabled: bool(metro.enabled, d.metronome.enabled),

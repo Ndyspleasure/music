@@ -1,5 +1,6 @@
 import { useMemo, useRef } from "react";
 import { useApp, useController } from "../../app/context";
+import { useNoteName } from "../../hooks/useNoteName";
 import { layoutRange } from "../../features/music-theory/note-layout";
 import { midiToNoteName, pitchClassOf } from "../../features/music-theory/notes";
 import { isInScale } from "../../features/music-theory/scales";
@@ -16,6 +17,7 @@ export function PianoKeyboard() {
   const root = useApp((s) => s.settings.root);
   const scale = useApp((s) => s.settings.scale);
   const preferFlats = useApp((s) => s.settings.preferFlats);
+  const noteName = useNoteName();
   const active = useApp((s) => s.activeNotes);
   const pointerNotes = useRef(new Map<number, number>());
 
@@ -60,6 +62,7 @@ export function PianoKeyboard() {
         const isActive = activeSet.has(k.note);
         const isRoot = pitchClassOf(k.note) === root;
         const name = midiToNoteName(k.note, preferFlats);
+        const shown = noteName(k.note);
         const style = k.black
           ? {
               left: `${((k.whiteIndex + 1) / whiteCount) * 100}%`,
@@ -72,7 +75,7 @@ export function PianoKeyboard() {
             key={k.note}
             type="button"
             tabIndex={-1}
-            aria-label={`${name}${code ? `, tombol ${keyCodeLabel(code)}` : ""}${inScale ? "" : " (di luar skala)"}`}
+            aria-label={`${name}${shown !== name ? ` (${shown})` : ""}${code ? `, tombol ${keyCodeLabel(code)}` : ""}${inScale ? "" : " (di luar skala)"}`}
             aria-pressed={isActive}
             style={style}
             onPointerDown={(e) => {
@@ -106,7 +109,7 @@ export function PianoKeyboard() {
             {code && (
               <span className={cx("font-mono", k.black ? "text-ink-muted" : "opacity-70")}>{keyCodeLabel(code)}</span>
             )}
-            {!k.black && <span className={cx("font-semibold", isRoot && !isActive && "text-spot")}>{name}</span>}
+            {!k.black && <span className={cx("font-semibold", isRoot && !isActive && "text-spot")}>{shown}</span>}
           </button>
         );
       })}

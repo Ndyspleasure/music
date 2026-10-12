@@ -6,6 +6,7 @@ import { layoutRange } from "../../features/music-theory/note-layout";
 import { fingerSlotLabels } from "../hand-guide/finger-labels";
 import { midiToNoteName, pitchClassName } from "../../features/music-theory/notes";
 import { SCALE_IDS, SCALES } from "../../features/music-theory/scales";
+import type { NoteNaming } from "../../features/music-theory/note-naming";
 import type { ChordType, PlayMode, ScaleId } from "../../types/music";
 import { cx } from "../../utils/cx";
 import { Field, Segmented, Select, Slider, Toggle } from "../ui/primitives";
@@ -196,6 +197,23 @@ export function MusicControls() {
         checked={s.showNoteNames}
         onChange={(showNoteNames) => set({ showNoteNames })}
       />
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs font-medium text-ink-muted">Nama nada</span>
+        <Segmented<NoteNaming>
+          label="Nama nada"
+          value={s.noteNaming}
+          onChange={(noteNaming) => set({ noteNaming })}
+          options={[
+            { value: "letter", label: "C D E" },
+            { value: "solfege", label: "Do Re Mi" },
+            { value: "number", label: "1 2 3" },
+          ]}
+        />
+        <p className="text-[11px] text-ink-faint">
+          Do Re Mi dan 1 2 3 dihitung dari nada dasar: do = 1 = {pitchClassName(s.root, s.preferFlats)}. Tanda ' / titik
+          di atas = oktaf lebih tinggi.
+        </p>
+      </div>
       <Toggle label="Gunakan nama ♭ (mol)" checked={s.preferFlats} onChange={(preferFlats) => set({ preferFlats })} />
     </div>
   );

@@ -2,7 +2,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { useApp, useController } from "../../app/context";
 import { OCTAVE_LIMITS } from "../../config/app-settings";
 import { formatProgramNumber } from "../../data/instruments/gm-programs";
-import { midiToNoteName } from "../../features/music-theory/notes";
+import { useNoteName } from "../../hooks/useNoteName";
 import { Button } from "../ui/primitives";
 import { DrumPads } from "./DrumPads";
 import { LevelMeter } from "./LevelMeter";
@@ -12,7 +12,7 @@ export function PlaySurface() {
   const controller = useController();
   const mode = useApp((s) => s.settings.mode);
   const active = useApp((s) => s.activeNotes);
-  const preferFlats = useApp((s) => s.settings.preferFlats);
+  const noteName = useNoteName();
   const startOctave = useApp((s) => s.settings.startOctave);
   const instrumentId = useApp((s) => s.settings.instrumentId);
   const instrument = useApp((s) => s.catalog.instruments.find((i) => i.id === instrumentId));
@@ -38,7 +38,7 @@ export function PlaySurface() {
           aria-label="Nada aktif"
           data-testid="active-notes"
         >
-          {mode === "drums" ? "●" : active.length ? active.map((n) => midiToNoteName(n, preferFlats)).join(" ") : "—"}
+          {mode === "drums" ? "●" : active.length ? active.map(noteName).join(" ") : "—"}
         </div>
         {mode !== "drums" && (
           <div className="flex items-center gap-1">

@@ -3,7 +3,7 @@ import { useApp, useController } from "../../app/context";
 import { DRUM_GRID, DRUM_PADS, fingerDrumPad } from "../../data/drum-map";
 import { FINGER_TIPS, HAND_CONNECTIONS } from "../../features/hand-tracking/landmarks";
 import { FINGER_SLOT_COUNT, fingerSlot } from "../../features/music-theory/note-layout";
-import { midiToNoteName } from "../../features/music-theory/notes";
+import { formatNoteName, type NoteNameOptions } from "../../features/music-theory/note-naming";
 import type { FrameSnapshot } from "../../features/performance/performance-controller";
 import { FINGERS } from "../../types/gesture";
 
@@ -22,13 +22,26 @@ export function StageOverlay() {
   const mode = useApp((s) => s.settings.mode);
   const fingers = useApp((s) => s.settings.noteInput === "fingers");
   const preferFlats = useApp((s) => s.settings.preferFlats);
+  const naming = useApp((s) => s.settings.noteNaming);
+  const root = useApp((s) => s.settings.root);
+  const startOctave = useApp((s) => s.settings.startOctave);
   const showLandmarks = useApp((s) => s.settings.showLandmarks);
   const showNoteNames = useApp((s) => s.settings.showNoteNames);
   const activeNotes = useApp((s) => s.activeNotes);
-  const opts = useRef({ mode, fingers, preferFlats, showLandmarks, showNoteNames, activeNotes });
+  const opts = useRef({
+    mode,
+    fingers,
+    preferFlats,
+    naming,
+    root,
+    startOctave,
+    showLandmarks,
+    showNoteNames,
+    activeNotes,
+  });
   useEffect(() => {
-    opts.current = { mode, fingers, preferFlats, showLandmarks, showNoteNames, activeNotes };
-  }, [mode, fingers, preferFlats, showLandmarks, showNoteNames, activeNotes]);
+    opts.current = { mode, fingers, preferFlats, naming, root, startOctave, showLandmarks, showNoteNames, activeNotes };
+  }, [mode, fingers, preferFlats, naming, root, startOctave, showLandmarks, showNoteNames, activeNotes]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -68,10 +81,16 @@ export function StageOverlay() {
       ctx.clearRect(0, 0, w, h);
       const o = opts.current;
       const snap = latest;
-      const labels = slotLabels(snap, o.mode === "drums", o.preferFlats);
+      const names: NoteNameOptions = {
+        naming: o.naming,
+        root: o.root,
+        startOctave: o.startOctave,
+        preferFlats: o.preferFlats,
+      };
+      const labels = slotLabels(snap, o.mode === "drums", names);
       if (o.fingers) drawFingerLegend(ctx, w, h, dpr, snap, labels, o.mode === "drums", o.activeNotes, padFlash, now);
       else if (o.mode === "drums") drawPads(ctx, w, h, dpr, padFlash, now, snap);
-      else drawZones(ctx, w, h, dpr, snap, o.activeNotes, o.showNoteNames);
+      else drawZones(ctx, w, h, dpr, snap, o.activeNotes, o.showNoteNames, names);
       if (snap) drawHands(ctx, w, h, dpr, snap, o.showLandmarks, !o.fingers);
       if (snap && o.fingers && o.showNoteNames) drawFingerLabels(ctx, w, h, dpr, snap, labels);
     };
@@ -95,6 +114,7 @@ function drawZones(
   snap: FrameSnapshot | null,
   activeNotes: readonly number[],
   showNames: boolean,
+  names: NoteNameOptions,
 ) {
   const zones = snap?.zones ?? [];
   if (zones.length === 0) return;
@@ -120,17 +140,17 @@ function drawZones(
     }
     if (showNames && zw > 18 * dpr) {
       ctx.fillStyle = isActive ? `rgb(${SPOT})` : z.isRoot ? `rgba(${SPOT},0.9)` : "rgba(238,241,248,0.75)";
-      ctx.fillText(z.label, x + zw / 2, h - 12 * dpr);
+      ctx.fillText(formatNoteName(z.note, names), x + zw / 2, h - 12 * dpr);
     }
   });
 }
 
 /** Label per slot jari: nama nada (melodi/akor) atau nama pad (drum). */
-function slotLabels(snap: FrameSnapshot | null, drums: boolean, preferFlats: boolean): string[] {
+function slotLabels(snap: FrameSnapshot | null, drums: boolean, names: NoteNameOptions): string[] {
   return Array.from({ length: FINGER_SLOT_COUNT }, (_, slot) => {
     if (drums) return fingerDrumPad(slot)?.label ?? "";
     const note = snap?.fingerNotes[slot];
-    return note === undefined ? "" : midiToNoteName(note, preferFlats);
+    return note === undefined ? "" : formatNoteName(note, names);
   });
 }
 

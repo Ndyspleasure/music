@@ -78,6 +78,13 @@ test.describe("Kamera, MediaPipe, dan gesture", () => {
     // Buka jari → nada berhenti.
     await injectHand(page, [{ t: 1100, x: 0.5, y: 0.5, pinch: 0.9 }]);
     await expect(page.getByTestId("active-notes")).toHaveText("—");
+    // Nama nada solmisasi / angka (relatif terhadap nada dasar C).
+    await page.getByRole("tab", { name: "Musik" }).click();
+    await page.getByRole("radio", { name: "Do Re Mi" }).click();
+    await injectHand(page, [{ t: 1133, x: 0.5, y: 0.5, pinch: 0.9, touch: 12 }]);
+    await expect(page.getByTestId("active-notes")).toHaveText("la");
+    await page.getByRole("radio", { name: "1 2 3" }).click();
+    await expect(page.getByTestId("active-notes")).toHaveText("6");
   });
 
   test("panduan tangan SVG: tampil saat sesi, mengikuti jari pengguna, dan bisa dimatikan", async ({ page }) => {
