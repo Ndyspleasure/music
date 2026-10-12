@@ -147,9 +147,9 @@ describe("GestureInterpreter — sentuhan jari", () => {
     const step = (ratio: number) =>
       fingerEvents(gi.process(frame((t += 33), fingerHand("hand-left", 0.5, 0.5, "middle", ratio))).events);
     step(0.9);
-    // Sentuhan belum rapat: perlu satu frame konfirmasi.
-    expect(step(0.2)).toEqual([]);
+    // Sentuhan belum rapat, tetapi jari lain jauh: langsung diterima (tanpa frame konfirmasi).
     expect(step(0.2)).toEqual(["finger-down:middle"]);
+    expect(step(0.2)).toEqual([]);
     for (const r of [0.4, 0.45, 0.38]) expect(step(r)).toEqual([]);
     expect(step(0.7)).toEqual(["finger-up:middle"]);
   });

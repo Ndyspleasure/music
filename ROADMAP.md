@@ -49,6 +49,8 @@ Legenda verifikasi: **U** = unit test (Vitest) · **E** = e2e Playwright di Chro
 - [x] Mode akor (triad/septim diatonis, power), dua tangan (U)
 - [x] Tutorial interaktif, kontrol sensitivitas (preset + kustom), feedback nada/pad/meter (E: screenshot)
 - [x] Responsif (390 px tanpa scroll horizontal), fokus keyboard, status tidak hanya dengan warna (E)
+- [x] Layar kecil: tanpa scroll horizontal di 320–360 px, panduan tangan di bawah kamera (tidak menutupinya) di HP, panggung kamera muat di tinggi layar HP landscape (screenshot Playwright)
+- [x] Sentuhan jari yang jelas (jari lain jauh) berbunyi di frame pertama, tanpa menunggu frame konfirmasi (U)
 
 ## Fitur lanjutan (PROJECT.md §5.3)
 

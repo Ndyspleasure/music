@@ -19,7 +19,10 @@ export function App() {
         Lompat ke konten utama
       </a>
       <AppHeader />
-      <main id="main" className="mx-auto grid max-w-[1500px] gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_400px]">
+      <main
+        id="main"
+        className="mx-auto grid max-w-[1500px] grid-cols-1 gap-4 px-3 py-3 sm:px-4 sm:py-4 lg:grid-cols-[minmax(0,1fr)_400px]"
+      >
         <div className="flex min-w-0 flex-col gap-4">
           <StagePanel />
           <PlaySurface />

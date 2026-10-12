@@ -64,10 +64,24 @@ describe("FingerTouchDetector", () => {
     expect(d.update(hand({ middle: 0.35, ring: 0.05 }), START, RELEASE)).toEqual({ up: "middle", down: "ring" });
   });
 
+  it("sentuhan yang jelas (jari lain jauh) diterima di frame pertama", () => {
+    // 0.28 belum "rapat", tetapi tidak ada jari lain yang dekat → tidak perlu menunggu konfirmasi.
+    expect(run([{ index: 0.28 }])).toEqual([{ down: "index" }]);
+  });
+
+  it("sentuhan ambigu (dua jari sama-sama dekat) tetap menunggu konfirmasi", () => {
+    expect(
+      run([
+        { middle: 0.28, ring: 0.36 },
+        { middle: 0.28, ring: 0.36 },
+      ]),
+    ).toEqual([{}, { down: "middle" }]);
+  });
+
   it("jari manis/kelingking punya ambang lebih longgar", () => {
     // 0.38 di atas ambang telunjuk/tengah (0.35) tetapi masih di bawah 0.35 × 1.15 untuk jari manis.
-    expect(run([{ ring: 0.38 }, { ring: 0.38 }]).at(-1)).toEqual({ down: "ring" });
-    expect(run([{ middle: 0.38 }, { middle: 0.38 }]).at(-1)).toEqual({});
+    expect(run([{ ring: 0.38 }, { ring: 0.38 }])).toContainEqual({ down: "ring" });
+    expect(run([{ middle: 0.38 }, { middle: 0.38 }])).toEqual([{}, {}]);
   });
 
   it("lepas saat menjauh, dan reset melepas jari aktif", () => {
