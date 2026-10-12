@@ -110,6 +110,12 @@ export function GestureSettings() {
         onChange={(mirror) => controller.updateSettings({ mirror })}
       />
       <Toggle
+        label="Tampilkan panduan tangan"
+        hint="Gambar tangan di layar kamera yang menunjukkan jari mana memainkan nada apa."
+        checked={s.showHandGuide}
+        onChange={(showHandGuide) => controller.updateSettings({ showHandGuide })}
+      />
+      <Toggle
         label="Tampilkan kerangka tangan"
         checked={s.showLandmarks}
         onChange={(showLandmarks) => controller.updateSettings({ showLandmarks })}

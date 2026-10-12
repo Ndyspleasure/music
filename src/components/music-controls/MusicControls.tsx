@@ -1,9 +1,9 @@
 import { Drum, Hand, MoveHorizontal, Music2, Piano } from "lucide-react";
 import { useApp, useController } from "../../app/context";
 import { OCTAVE_LIMITS, type NoteInput } from "../../config/app-settings";
-import { FINGER_DRUM_PAD_IDS, DRUM_PADS } from "../../data/drum-map";
 import { CHORD_TYPES } from "../../features/music-theory/chords";
-import { buildFingerNotes, layoutRange } from "../../features/music-theory/note-layout";
+import { layoutRange } from "../../features/music-theory/note-layout";
+import { fingerSlotLabels } from "../hand-guide/finger-labels";
 import { midiToNoteName, pitchClassName } from "../../features/music-theory/notes";
 import { SCALE_IDS, SCALES } from "../../features/music-theory/scales";
 import type { ChordType, PlayMode, ScaleId } from "../../types/music";
@@ -16,10 +16,7 @@ export function MusicControls() {
   const set = controller.updateSettings.bind(controller);
   const { low, high } = layoutRange(s);
   const fingers = s.noteInput === "fingers";
-  const fingerLabels =
-    s.mode === "drums"
-      ? FINGER_DRUM_PAD_IDS.map((id) => DRUM_PADS.find((p) => p.id === id)?.label ?? id)
-      : buildFingerNotes(s).map((n) => midiToNoteName(n, s.preferFlats));
+  const fingerLabels = fingerSlotLabels(s);
 
   return (
     <div className="flex flex-col gap-4">

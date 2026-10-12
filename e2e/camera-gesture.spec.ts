@@ -80,6 +80,28 @@ test.describe("Kamera, MediaPipe, dan gesture", () => {
     await expect(page.getByTestId("active-notes")).toHaveText("—");
   });
 
+  test("panduan tangan SVG: tampil saat sesi, mengikuti jari pengguna, dan bisa dimatikan", async ({ page }) => {
+    await openApp(page, { debug: true });
+    await page.getByRole("button", { name: "Mulai Bermain" }).click();
+    await expect(page.getByText("Kamera aktif")).toBeVisible({ timeout: 45_000 });
+    const guide = page.getByRole("region", { name: "Panduan tangan" });
+    await expect(guide).toBeVisible();
+    await expect(guide.getByRole("img", { name: /Tangan kiri: telunjuk C4/ })).toBeVisible();
+    await page.evaluate(() => {
+      type Ctl = { tracker?: { stop?: () => void } };
+      (window as unknown as { __gestura: { controller: Ctl } }).__gestura.controller.tracker?.stop?.();
+    });
+    await injectHand(page, [{ t: 5000, x: 0.5, y: 0.5, pinch: 0.9, touch: 16 }]);
+    await expect(guide.getByRole("img", { name: /Ibu jari sedang menyentuh jari manis/ })).toBeVisible();
+    const toggle = page.getByRole("button", { name: "Panduan", exact: true });
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await toggle.click();
+    await expect(guide).toBeHidden();
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await toggle.click();
+    await expect(guide).toBeVisible();
+  });
+
   test("input posisi: pinch memainkan nada zona, berpindah zona, dan tangan hilang melepas note", async ({ page }) => {
     await openApp(page, { debug: true });
     await enableAudio(page);

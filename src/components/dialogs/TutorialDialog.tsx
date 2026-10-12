@@ -1,7 +1,8 @@
 import { CheckCircle2, Circle } from "lucide-react";
 import { useApp, useController } from "../../app/context";
 import { cx } from "../../utils/cx";
-import { Button } from "../ui/primitives";
+import { HandGuide } from "../hand-guide/HandGuide";
+import { Button, Toggle } from "../ui/primitives";
 import { Modal } from "./Modal";
 
 /** Panduan interaktif: langkah tercentang otomatis saat pengguna melakukannya. */
@@ -12,6 +13,7 @@ export function TutorialDialog() {
   const session = useApp((s) => s.session);
   const audio = useApp((s) => s.audio.status);
   const fingers = useApp((s) => s.settings.noteInput === "fingers");
+  const showGuide = useApp((s) => s.settings.showHandGuide);
 
   const steps = [
     {
@@ -57,6 +59,9 @@ export function TutorialDialog() {
 
   return (
     <Modal open={open} onClose={() => controller.openTutorial(false)} title="Cara bermain">
+      <div className="mb-4 rounded-xl border border-stage-700 bg-stage-900 p-3">
+        <HandGuide />
+      </div>
       <ol className="flex flex-col gap-3">
         {steps.map((step, i) => (
           <li
@@ -88,6 +93,14 @@ export function TutorialDialog() {
           </li>
           <li>Esc menghentikan semua bunyi kapan saja.</li>
         </ul>
+      </div>
+      <div className="mt-4">
+        <Toggle
+          label="Tampilkan panduan tangan di layar kamera"
+          hint="Bisa juga dinyalakan/dimatikan lewat tombol “Panduan” di pojok kanan atas kamera."
+          checked={showGuide}
+          onChange={(showHandGuide) => controller.updateSettings({ showHandGuide })}
+        />
       </div>
       <div className="mt-4 flex justify-end gap-2">
         {audio !== "ready" && (

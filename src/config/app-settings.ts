@@ -48,6 +48,8 @@ export interface AppSettings {
   gesture: GestureConfig;
   mirror: boolean;
   showLandmarks: boolean;
+  /** Tampilkan panduan tangan bergambar (SVG) di atas area kamera. */
+  showHandGuide: boolean;
   showNoteNames: boolean;
   preferFlats: boolean;
   metronome: MetronomeSettings;
@@ -76,6 +78,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   gesture: GESTURE_PRESETS.normal,
   mirror: true,
   showLandmarks: true,
+  showHandGuide: true,
   showNoteNames: true,
   preferFlats: false,
   metronome: { enabled: false, bpm: 100, beatsPerBar: 4, volume: 0.7, countIn: true, quantizeLoop: true },
@@ -138,6 +141,7 @@ export function sanitizeSettings(input: unknown): AppSettings {
     }),
     mirror: bool(s.mirror, d.mirror),
     showLandmarks: bool(s.showLandmarks, d.showLandmarks),
+    showHandGuide: bool(s.showHandGuide, d.showHandGuide),
     showNoteNames: bool(s.showNoteNames, d.showNoteNames),
     preferFlats: bool(s.preferFlats, d.preferFlats),
     metronome: {

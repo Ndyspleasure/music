@@ -1,7 +1,9 @@
-import { Camera, CameraOff, Hand, Loader2, ShieldCheck, Square } from "lucide-react";
+import { Camera, CameraOff, Hand, Loader2, ShieldCheck, Square, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useApp, useController } from "../../app/context";
 import { cx } from "../../utils/cx";
+import { HandGuide } from "../hand-guide/HandGuide";
+import { useLiveFingers } from "../hand-guide/use-live-fingers";
 import { Button } from "../ui/primitives";
 import { StageOverlay } from "./StageOverlay";
 
@@ -14,11 +16,14 @@ export function StagePanel() {
   const hands = useApp((s) => s.handsDetected);
   const mirror = useApp((s) => s.settings.mirror);
   const mode = useApp((s) => s.settings.mode);
+  const noteInput = useApp((s) => s.settings.noteInput);
+  const showGuide = useApp((s) => s.settings.showHandGuide);
   const [aspect, setAspect] = useState(4 / 3);
   const [fps, setFps] = useState(0);
 
   const running = session === "running";
   const busy = session === "starting" || session === "stopping";
+  const live = useLiveFingers(running && showGuide);
 
   useEffect(() => {
     if (!running) return;
@@ -76,7 +81,16 @@ export function StagePanel() {
         </div>
       )}
       {running && (
-        <div className="absolute top-3 right-3">
+        <div className="absolute top-3 right-3 flex items-center gap-2">
+          <Button
+            size="sm"
+            variant={showGuide ? "primary" : "secondary"}
+            aria-pressed={showGuide}
+            onClick={() => controller.updateSettings({ showHandGuide: !showGuide })}
+            title="Tampilkan/sembunyikan panduan tangan"
+          >
+            <Hand className="h-3.5 w-3.5" aria-hidden /> Panduan
+          </Button>
           <Button
             size="sm"
             variant="secondary"
@@ -87,7 +101,26 @@ export function StagePanel() {
           </Button>
         </div>
       )}
-      {running && hands === 0 && (
+      {running && showGuide && (
+        <section
+          aria-label="Panduan tangan"
+          className="absolute top-14 right-3 w-[min(320px,calc(100%-1.5rem))] rounded-2xl border border-stage-600 bg-stage-950/85 p-3 shadow-xl backdrop-blur"
+        >
+          <div className="mb-1 flex items-center justify-between">
+            <p className="text-xs font-semibold text-ink">{live ? "Jari Anda sekarang" : "Cara bermain"}</p>
+            <button
+              type="button"
+              onClick={() => controller.updateSettings({ showHandGuide: false })}
+              className="rounded-lg p-1 text-ink-muted hover:bg-stage-800 hover:text-ink"
+              aria-label="Tutup panduan tangan"
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+          <HandGuide live={live} compact />
+        </section>
+      )}
+      {running && hands === 0 && !showGuide && (
         <p className="pointer-events-none absolute inset-x-0 top-1/2 mx-auto max-w-sm -translate-y-1/2 rounded-xl bg-stage-950/75 px-4 py-3 text-center text-sm text-ink-muted">
           Angkat satu tangan ke depan kamera, telapak menghadap kamera. Pastikan pencahayaan cukup dan seluruh tangan
           terlihat.
@@ -103,6 +136,11 @@ export function StagePanel() {
               <Camera className="h-7 w-7" aria-hidden />
             )}
           </div>
+          {camera.status !== "error" && (
+            <div className="w-full max-w-sm">
+              <HandGuide compact />
+            </div>
+          )}
           <div className="max-w-md space-y-2">
             <h2 className="text-lg font-semibold text-ink sm:text-xl">
               {camera.status === "error" ? "Kamera belum bisa dipakai" : "Ubah ruang di depan kamera jadi instrumen"}
@@ -110,9 +148,11 @@ export function StagePanel() {
             <p className="text-sm text-ink-muted">
               {camera.status === "error"
                 ? camera.error
-                : mode === "drums"
-                  ? "Ayunkan tangan ke bawah dengan cepat di atas pad untuk memukul drum, atau cubit untuk mengetuk."
-                  : "Gerakkan telunjuk ke kiri–kanan untuk memilih nada, lalu cubit ibu jari dan telunjuk untuk membunyikannya."}
+                : noteInput === "fingers"
+                  ? "Angkat tangan ke depan kamera, lalu sentuhkan ibu jari ke jari lain seperti gambar di atas."
+                  : mode === "drums"
+                    ? "Ayunkan tangan ke bawah dengan cepat di atas pad untuk memukul drum, atau cubit untuk mengetuk."
+                    : "Gerakkan telunjuk ke kiri–kanan untuk memilih nada, lalu cubit ibu jari dan telunjuk untuk membunyikannya."}
             </p>
             {tracker.status === "error" && <p className="text-sm text-bad">{tracker.error}</p>}
           </div>
