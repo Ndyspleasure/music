@@ -1,4 +1,4 @@
-import type { Landmark } from "../../types/gesture";
+import type { FingerId, Landmark } from "../../types/gesture";
 
 /** Indeks landmark MediaPipe Hands. */
 export const LM = {
@@ -7,8 +7,19 @@ export const LM = {
   INDEX_MCP: 5,
   INDEX_TIP: 8,
   MIDDLE_MCP: 9,
+  MIDDLE_TIP: 12,
+  RING_TIP: 16,
   PINKY_MCP: 17,
+  PINKY_TIP: 20,
 } as const;
+
+/** Landmark ujung tiap jari yang dapat disentuhkan ke ibu jari. */
+export const FINGER_TIPS: Record<FingerId, number> = {
+  index: LM.INDEX_TIP,
+  middle: LM.MIDDLE_TIP,
+  ring: LM.RING_TIP,
+  pinky: LM.PINKY_TIP,
+};
 
 /** Pasangan landmark untuk menggambar kerangka tangan. */
 export const HAND_CONNECTIONS: readonly [number, number][] = [
@@ -58,6 +69,14 @@ export function pinchRatio(lm: Landmark[]): number {
   const index = lm[LM.INDEX_TIP];
   if (!thumb || !index) return Number.POSITIVE_INFINITY;
   return distance2d(thumb, index) / handScale(lm);
+}
+
+/** Rasio jarak ujung ibu jari ke ujung jari tertentu, dibagi ukuran tangan. */
+export function fingerTouchRatio(lm: Landmark[], finger: FingerId): number {
+  const thumb = lm[LM.THUMB_TIP];
+  const tip = lm[FINGER_TIPS[finger]];
+  if (!thumb || !tip) return Number.POSITIVE_INFINITY;
+  return distance2d(thumb, tip) / handScale(lm);
 }
 
 /** Mirror horizontal ke ruang tampilan selfie. */

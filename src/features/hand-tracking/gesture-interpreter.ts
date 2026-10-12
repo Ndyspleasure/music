@@ -1,13 +1,16 @@
 import { DEFAULT_GESTURE_CONFIG, sanitizeGestureConfig, type GestureConfig } from "../../config/gesture-config";
-import type {
-  GestureEvent,
-  GestureFrame,
-  HandFrameState,
-  HandSide,
-  HandTrackingResult,
-  TrackedHand,
+import {
+  FINGERS,
+  type FingerId,
+  type GestureEvent,
+  type GestureFrame,
+  type HandFrameState,
+  type HandSide,
+  type HandTrackingResult,
+  type Landmark,
+  type TrackedHand,
 } from "../../types/gesture";
-import { LM, mirrorLandmarks, pinchRatio } from "./landmarks";
+import { fingerTouchRatio, LM, mirrorLandmarks, pinchRatio } from "./landmarks";
 import { OneEuroFilter } from "./one-euro-filter";
 
 interface HandState {
@@ -23,6 +26,8 @@ interface HandState {
   lastSeen: number;
   lastSample: number;
   pinching: boolean;
+  /** Jari yang sedang menyentuh ibu jari (maksimal satu per tangan). */
+  finger: FingerId | null;
   strikeArmed: boolean;
   lastStrikeAt: number;
   lastSwipeAt: number;
@@ -38,6 +43,11 @@ export interface GestureInterpreterOptions {
 
 /** Bobot EMA untuk estimasi kecepatan. */
 const VELOCITY_SMOOTHING = 0.5;
+/**
+ * Saat satu jari masih menempel, jari lain baru mengambil alih bila jaraknya ke ibu jari
+ * jelas lebih dekat (rasio × faktor ini), agar tidak berkedip di antara dua jari.
+ */
+const FINGER_SWITCH_FACTOR = 0.75;
 
 /**
  * Mengubah hasil hand tracking menjadi event gesture ternormalisasi.
@@ -131,6 +141,7 @@ export class GestureInterpreter {
         lastSeen: now,
         lastSample: now,
         pinching: false,
+        finger: null,
         strikeArmed: true,
         lastStrikeAt: -Infinity,
         lastSwipeAt: -Infinity,
@@ -167,6 +178,8 @@ export class GestureInterpreter {
       events.push({ type: "pinch-end", handId: hand.id, timestamp: now });
     }
 
+    this.updateFinger(state, lm, now, events);
+
     // Pukulan (gerak turun cepat) dengan re-arm + cooldown.
     if (state.strikeArmed && state.vy > cfg.strikeVelocity && now - state.lastStrikeAt >= cfg.strikeCooldownMs) {
       state.strikeArmed = false;
@@ -200,10 +213,54 @@ export class GestureInterpreter {
       });
     }
 
-    return { handId: hand.id, side: state.side, x, y, pinchRatio: ratio, pinching: state.pinching, landmarks: lm };
+    return {
+      handId: hand.id,
+      side: state.side,
+      x,
+      y,
+      pinchRatio: ratio,
+      pinching: state.pinching,
+      finger: state.finger,
+      landmarks: lm,
+    };
+  }
+
+  /**
+   * Deteksi jari mana yang menyentuh ibu jari (telunjuk/tengah/manis/kelingking), dengan
+   * hysteresis yang sama seperti pinch. Hanya jari terdekat yang dianggap aktif.
+   */
+  private updateFinger(state: HandState, lm: Landmark[], now: number, events: GestureEvent[]): void {
+    const cfg = this.config;
+    let closest: FingerId = FINGERS[0]!;
+    let closestRatio = Number.POSITIVE_INFINITY;
+    const ratios = new Map<FingerId, number>();
+    for (const f of FINGERS) {
+      const r = fingerTouchRatio(lm, f);
+      ratios.set(f, r);
+      if (r < closestRatio) {
+        closestRatio = r;
+        closest = f;
+      }
+    }
+    const current = state.finger;
+    if (current) {
+      const currentRatio = ratios.get(current) ?? Number.POSITIVE_INFINITY;
+      const switchTo =
+        closest !== current && closestRatio < cfg.pinchStart && closestRatio < currentRatio * FINGER_SWITCH_FACTOR;
+      if (currentRatio > cfg.pinchRelease || switchTo) {
+        state.finger = null;
+        events.push({ type: "finger-up", handId: state.id, finger: current, timestamp: now });
+      }
+      if (!switchTo) return;
+    }
+    if (closestRatio < cfg.pinchStart) {
+      state.finger = closest;
+      events.push({ type: "finger-down", handId: state.id, side: state.side, finger: closest, timestamp: now });
+    }
   }
 
   private loseHand(h: HandState, now: number, events: GestureEvent[]): void {
+    if (h.finger) events.push({ type: "finger-up", handId: h.id, finger: h.finger, timestamp: now });
     if (h.pinching) events.push({ type: "pinch-end", handId: h.id, timestamp: now });
     events.push({ type: "hand-lost", handId: h.id, timestamp: now });
   }

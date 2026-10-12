@@ -105,9 +105,15 @@ describe("PerformanceController", () => {
     await controller.startSession(video);
     expect(store.getState().session).toBe("running");
     expect(tracker.running).toBe(true);
-    // Zona 0 (C4) di ruang tampilan x≈0.06 → kamera x≈0.94 karena mirror.
+    // Input default "Jari": ibu jari + telunjuk tangan kanan = slot 4 = G4, di posisi mana pun.
     tracker.cb?.(frame(0, hand("hand-right", 0.94, 0.5, 0.9)));
     tracker.cb?.(frame(33, hand("hand-right", 0.94, 0.5, 0.1)));
+    expect(store.getState().activeNotes).toEqual([67]);
+    tracker.cb?.(frame(66, hand("hand-right", 0.94, 0.5, 0.9)));
+    expect(store.getState().activeNotes).toEqual([]);
+    // Input "Posisi": zona 0 (C4) di ruang tampilan x≈0.06 → kamera x≈0.94 karena mirror.
+    controller.updateSettings({ noteInput: "position" });
+    tracker.cb?.(frame(99, hand("hand-right", 0.94, 0.5, 0.1)));
     expect(store.getState().activeNotes).toEqual([60]);
     expect(store.getState().handsDetected).toBe(1);
     await controller.stopSession();

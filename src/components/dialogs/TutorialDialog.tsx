@@ -11,6 +11,7 @@ export function TutorialDialog() {
   const progress = useApp((s) => s.tutorialProgress);
   const session = useApp((s) => s.session);
   const audio = useApp((s) => s.audio.status);
+  const fingers = useApp((s) => s.settings.noteInput === "fingers");
 
   const steps = [
     {
@@ -21,18 +22,32 @@ export function TutorialDialog() {
     {
       done: progress.handSeen,
       title: "Tunjukkan tangan",
-      body: "Angkat satu tangan sekitar 40–80 cm dari kamera, telapak menghadap kamera. Lingkaran pointer akan mengikuti ujung telunjuk.",
+      body: fingers
+        ? "Angkat satu atau dua tangan sekitar 40–80 cm dari kamera, telapak menghadap kamera. Nama nada muncul di ujung tiap jari."
+        : "Angkat satu tangan sekitar 40–80 cm dari kamera, telapak menghadap kamera. Lingkaran pointer akan mengikuti ujung telunjuk.",
     },
-    {
-      done: progress.pinched,
-      title: "Cubit untuk membunyikan",
-      body: "Rapatkan ujung ibu jari dan telunjuk. Lingkaran mengecil lalu menyala kuning saat cubitan terbaca.",
-    },
-    {
-      done: progress.noteFromGesture,
-      title: "Mainkan melodi",
-      body: "Sambil mencubit, geser tangan ke kiri–kanan untuk berpindah nada. Buka cubitan untuk berhenti.",
-    },
+    fingers
+      ? {
+          done: progress.pinched,
+          title: "Sentuhkan jari ke ibu jari",
+          body: "Tempelkan ujung ibu jari ke ujung telunjuk, jari tengah, jari manis, atau kelingking. Label jari menyala kuning saat sentuhan terbaca.",
+        }
+      : {
+          done: progress.pinched,
+          title: "Cubit untuk membunyikan",
+          body: "Rapatkan ujung ibu jari dan telunjuk. Lingkaran mengecil lalu menyala kuning saat cubitan terbaca.",
+        },
+    fingers
+      ? {
+          done: progress.noteFromGesture,
+          title: "Mainkan melodi",
+          body: "Tangan kiri: telunjuk→kelingking = Do Re Mi Fa. Tangan kanan: Sol La Si Do. Tangan tidak perlu berpindah — cukup ganti jari. Buka jari untuk berhenti.",
+        }
+      : {
+          done: progress.noteFromGesture,
+          title: "Mainkan melodi",
+          body: "Sambil mencubit, geser tangan ke kiri–kanan untuk berpindah nada. Buka cubitan untuk berhenti.",
+        },
     {
       done: false,
       title: "Jelajahi",
@@ -68,6 +83,9 @@ export function TutorialDialog() {
           <li>Cahaya dari depan dan latar yang tidak ramai membuat deteksi jauh lebih stabil.</li>
           <li>Nada terasa melompat-lompat? Pilih sensitivitas “Stabil” di tab Gesture.</li>
           <li>Dua tangan bisa bermain bersamaan; tiap tangan memegang nadanya sendiri.</li>
+          <li>
+            Lebih suka memilih nada dengan posisi tangan? Ganti “Cara memilih nada” ke “Posisi tangan” di tab Musik.
+          </li>
           <li>Esc menghentikan semua bunyi kapan saja.</li>
         </ul>
       </div>

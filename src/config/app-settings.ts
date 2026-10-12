@@ -5,6 +5,13 @@ import { GESTURE_PRESETS, sanitizeGestureConfig, type GestureConfig, type Sensit
 
 export type GlideMode = "retrigger" | "hold";
 
+/**
+ * Cara memilih nada lewat kamera:
+ * - "fingers": tiap jari yang disentuhkan ke ibu jari = nada berbeda, posisi tangan bebas.
+ * - "position": posisi horizontal tangan memilih zona nada, cubit untuk membunyikan.
+ */
+export type NoteInput = "fingers" | "position";
+
 export interface MetronomeSettings {
   enabled: boolean;
   bpm: number;
@@ -19,6 +26,7 @@ export interface MetronomeSettings {
 
 export interface AppSettings {
   mode: PlayMode;
+  noteInput: NoteInput;
   instrumentId: string;
   drumKitProgram: number;
   root: number;
@@ -48,6 +56,7 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   mode: "melodic",
+  noteInput: "fingers",
   instrumentId: "gm-0",
   drumKitProgram: 0,
   root: 0,
@@ -89,6 +98,7 @@ export function sanitizeSettings(input: unknown): AppSettings {
   const startOctave = int(s.startOctave, d.startOctave, OCTAVE_LIMITS.minStart, OCTAVE_LIMITS.maxStart);
   return {
     mode: PLAY_MODES.includes(s.mode as PlayMode) ? (s.mode as PlayMode) : d.mode,
+    noteInput: s.noteInput === "fingers" || s.noteInput === "position" ? s.noteInput : d.noteInput,
     instrumentId: typeof s.instrumentId === "string" && s.instrumentId.length < 80 ? s.instrumentId : d.instrumentId,
     drumKitProgram: int(s.drumKitProgram, d.drumKitProgram, 0, 127),
     root: int(s.root, d.root, 0, 11),

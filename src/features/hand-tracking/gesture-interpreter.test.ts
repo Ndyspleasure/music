@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GESTURE_PRESETS } from "../../config/gesture-config";
-import { frame, hand } from "../../test/hand-fixtures";
+import { fingerHand, frame, hand } from "../../test/hand-fixtures";
 import type { GestureEvent } from "../../types/gesture";
 import { GestureInterpreter, strikeVelocityToMidi } from "./gesture-interpreter";
 import { OneEuroFilter } from "./one-euro-filter";
@@ -49,7 +49,7 @@ describe("GestureInterpreter", () => {
     gi.process(frame(0, hand("hand-right", 0.5, 0.5, 0.8)));
     gi.process(frame(30, hand("hand-right", 0.5, 0.5, 0.1)));
     expect(types(gi.process(frame(100)).events)).toEqual([]); // masih dalam grace 180ms
-    expect(types(gi.process(frame(300)).events)).toEqual(["pinch-end", "hand-lost"]);
+    expect(types(gi.process(frame(300)).events)).toEqual(["finger-up", "pinch-end", "hand-lost"]);
     expect(gi.activeHandIds).toEqual([]);
   });
 
@@ -93,7 +93,7 @@ describe("GestureInterpreter", () => {
   it("reset melepaskan semua tangan", () => {
     const gi = new GestureInterpreter({ config: cfg });
     gi.process(frame(0, hand("hand-right", 0.5, 0.5, 0.1)));
-    expect(types(gi.reset(10))).toEqual(["pinch-end", "hand-lost"]);
+    expect(types(gi.reset(10))).toEqual(["finger-up", "pinch-end", "hand-lost"]);
   });
 });
 
@@ -110,5 +110,52 @@ describe("helpers", () => {
     expect(Math.abs(out - 0.5)).toBeLessThan(0.006);
     for (let i = 30; i < 90; i++) out = f.filter(0.9, i * 33);
     expect(out).toBeCloseTo(0.9, 2);
+  });
+});
+
+const fingerEvents = (events: GestureEvent[]) =>
+  events
+    .filter((e) => e.type === "finger-down" || e.type === "finger-up")
+    .map((e) => `${e.type}:${"finger" in e ? e.finger : ""}`);
+
+describe("GestureInterpreter — sentuhan jari", () => {
+  it("mendeteksi jari mana yang menyentuh ibu jari, di posisi tangan mana pun", () => {
+    const gi = new GestureInterpreter({ config: cfg, mirror: false });
+    let t = 0;
+    const step = (x: number, finger: "index" | "middle" | "ring" | "pinky" | null) =>
+      fingerEvents(gi.process(frame((t += 33), fingerHand("hand-left", x, 0.5, finger))).events);
+    step(0.5, null);
+    expect(step(0.5, "middle")).toEqual(["finger-down:middle"]);
+    expect(step(0.5, "middle")).toEqual([]);
+    expect(step(0.5, null)).toEqual(["finger-up:middle"]);
+    expect(step(0.5, "pinky")).toEqual(["finger-down:pinky"]);
+    // Ganti langsung ke jari lain tanpa membuka tangan.
+    expect(step(0.5, "ring")).toEqual(["finger-up:pinky", "finger-down:ring"]);
+    expect(step(0.5, null)).toEqual(["finger-up:ring"]);
+  });
+
+  it("finger-down membawa sisi tangan dan frame state melaporkan jari aktif", () => {
+    const gi = new GestureInterpreter({ config: cfg, mirror: true });
+    const f = gi.process(frame(0, fingerHand("hand-right", 0.2, 0.5, "ring")));
+    expect(f.events.find((e) => e.type === "finger-down")).toMatchObject({ side: "right", finger: "ring" });
+    expect(f.hands[0]?.finger).toBe("ring");
+  });
+
+  it("hysteresis: tidak berkedip di antara ambang start dan release", () => {
+    const gi = new GestureInterpreter({ config: cfg, mirror: false });
+    let t = 0;
+    const step = (ratio: number) =>
+      fingerEvents(gi.process(frame((t += 33), fingerHand("hand-left", 0.5, 0.5, "middle", ratio))).events);
+    step(0.9);
+    expect(step(0.2)).toEqual(["finger-down:middle"]);
+    for (const r of [0.4, 0.45, 0.38]) expect(step(r)).toEqual([]);
+    expect(step(0.7)).toEqual(["finger-up:middle"]);
+  });
+
+  it("tangan hilang melepas jari yang masih menempel", () => {
+    const gi = new GestureInterpreter({ config: cfg, mirror: false });
+    gi.process(frame(0, fingerHand("hand-left", 0.5, 0.5, "index")));
+    const f = gi.process(frame(1000));
+    expect(fingerEvents(f.events)).toEqual(["finger-up:index"]);
   });
 });

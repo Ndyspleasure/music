@@ -647,7 +647,17 @@ e2e/              Playwright (Chromium, kamera palsu)
 
 ### Alur data per frame
 
-`MediaPipeHandTracker` (requestVideoFrameCallback, hanya saat frame baru) → `toTrackingResult` (tipe internal; label handedness dibalik karena input tidak di-mirror) → `GestureInterpreter` (mirror ke ruang tampilan, One Euro, pinch hysteresis, strike/swipe, grace hand-lost) → `GesturePerformer` (zona + hysteresis, akor, drum, ekspresi CC11) → `NoteManager` (kepemilikan `owner × channel × note`, refcount) → `InstrumentEngine`. Overlay canvas menerima snapshot lewat `controller.onFrame` dan menggambar di rAF. React hanya menerima perubahan berfrekuensi rendah: jumlah tangan, note aktif, dan status.
+`MediaPipeHandTracker` (requestVideoFrameCallback, hanya saat frame baru) → `toTrackingResult` (tipe internal; label handedness dibalik karena input tidak di-mirror) → `GestureInterpreter` (mirror ke ruang tampilan, One Euro, pinch hysteresis, sentuhan jari `finger-down`/`finger-up`, strike/swipe, grace hand-lost) → `GesturePerformer` (input "Jari": slot jari → nada/pad; input "Posisi": zona + hysteresis; akor, drum, ekspresi CC11) → `NoteManager` (kepemilikan `owner × channel × note`, refcount) → `InstrumentEngine`. Overlay canvas menerima snapshot lewat `controller.onFrame` dan menggambar di rAF. React hanya menerima perubahan berfrekuensi rendah: jumlah tangan, note aktif, dan status.
+
+### Input nada "Jari" (default)
+
+Menjawab keluhan bahwa berpindah zona melelahkan dan lambat: nada dipilih dari **jari mana yang disentuhkan ke ibu jari**, bukan dari posisi tangan.
+
+- `GestureInterpreter` menghitung rasio jarak ujung ibu jari ke ujung tiap jari (8, 12, 16, 20) terhadap ukuran tangan. Ambangnya sama dengan pinch (`pinchStart`/`pinchRelease`, ada hysteresis). Hanya jari terdekat yang aktif, maksimal satu per tangan. Jari lain baru mengambil alih bila jelas lebih dekat (faktor 0.75), jadi berganti jari tanpa membuka tangan tetap mulus.
+- Slot jari (`fingerSlot`): tangan kiri telunjuk→kelingking = slot 0–3, tangan kanan = slot 4–7. Tangan dengan sisi tidak diketahui dianggap kiri.
+- `buildFingerNotes` mengisi 8 slot dengan derajat skala berurutan mulai dari nada dasar pada oktaf awal (C mayor oktaf 4 → C4 D4 E4 F4 | G4 A4 B4 C5). Mode akor membangun akor dari nada slot itu. Mode drum memakai `FINGER_DRUM_PAD_IDS` (kiri: kick, snare, hi-hat tutup, hi-hat buka; kanan: crash, tom tinggi, tom rendah, ride).
+- Pada input ini pinch, zona, dan strike posisi diabaikan. Swipe oktaf hanya berlaku saat tidak ada jari yang menempel. Tangan hilang mengirim `finger-up` dan melepas note milik tangan itu.
+- Setelan `noteInput: "fingers" | "position"` ada di tab Musik. Overlay menulis nama nada di ujung tiap jari dan menampilkan bilah legenda 4 | 4.
 
 ### Kanal MIDI
 

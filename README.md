@@ -1,6 +1,6 @@
 # Gestura — Instrumen Virtual Gerak Tangan
 
-Gestura adalah studio alat musik virtual yang berjalan di browser. Arahkan tangan ke webcam, gerakkan telunjuk untuk memilih nada, lalu **cubit** (rapatkan ibu jari dan telunjuk) untuk membunyikannya. Ada 128 instrumen General MIDI ditambah variasi bank, mode akor, drum, looper multi-layer, dan ekspor MIDI. Semua pemrosesan kamera dan audio terjadi **di perangkat pengguna**. Tidak ada backend, dan frame kamera tidak pernah diunggah.
+Gestura adalah studio alat musik virtual yang berjalan di browser. Arahkan tangan ke webcam, lalu **sentuhkan ujung ibu jari ke salah satu jari**: telunjuk, tengah, manis, atau kelingking. Tiap jari membunyikan nada berbeda, jadi tangan tidak perlu berpindah tempat. Tangan kiri memegang Do Re Mi Fa, tangan kanan Sol La Si Do (mengikuti key/skala). Cara lama juga masih ada: pilih nada dengan posisi tangan, lalu cubit untuk membunyikan. Ada 128 instrumen General MIDI ditambah variasi bank, mode akor, drum, looper multi-layer, dan ekspor MIDI. Semua pemrosesan kamera dan audio terjadi **di perangkat pengguna**. Tidak ada backend, dan frame kamera tidak pernah diunggah.
 
 > Spesifikasi produk: [`PROJECT.md`](PROJECT.md) · Desain teknis: [`arsitektur.md`](arsitektur.md) · Status fitur: [`ROADMAP.md`](ROADMAP.md) · Lisensi aset: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)
 
@@ -10,6 +10,7 @@ Gestura adalah studio alat musik virtual yang berjalan di browser. Arahkan tanga
 |---|---|
 | Kamera & tracking | Kamera hanya diminta setelah tombol **Mulai Bermain** ditekan. Indikator kamera aktif dan tombol Stop selalu terlihat. Pilihan kamera, mode selfie (mirror), dan 1–2 tangan. Hand tracking memakai MediaPipe Hand Landmarker (GPU, otomatis jatuh ke CPU) dan berjalan lokal. |
 | Gesture | Pointer ujung telunjuk dihaluskan dengan One Euro Filter. Pinch memakai hysteresis, ada ambang confidence, dan zona nada punya hysteresis. Juga tersedia pukulan drum (deteksi kecepatan + cooldown), swipe untuk ganti oktaf (opsional), dan grace period saat tangan hilang. |
+| Cara memilih nada | **Jari** (default): sentuhan ibu jari ke telunjuk/tengah/manis/kelingking = 4 nada per tangan, 8 nada untuk dua tangan, posisi tangan bebas. Di mode drum tiap jari = satu pad. **Posisi tangan**: posisi horizontal memilih zona nada, cubit untuk membunyikan. |
 | Mode bermain | **Melodi** (satu nada per tangan, dua tangan = polifoni). **Akor** (triad/septim diatonis atau power chord). **Drum** (8 pad, velocity dari kecepatan ayunan atau cubit-ketuk). |
 | Teori musik | 12 nada dasar dan 9 tangga nada (kromatis, mayor, minor natural/harmonik, pentatonik mayor/minor, blues, dorian, mixolydian). Opsi kunci ke skala, oktaf awal 1–7, 1–4 oktaf, dan nama ♯/♭. |
 | Instrumen | Katalog 128 program GM (nomor data 0–127, tampil 001–128) dengan status ketersediaan nyata dari sound bank. Ada 133 variasi bank GS, 13 kit drum, pencarian, dan filter kategori/sumber. |

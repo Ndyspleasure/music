@@ -1,3 +1,4 @@
+import { FINGERS, type FingerId, type HandSide } from "../../types/gesture";
 import type { MidiNote, NoteZone, PitchClass, ScaleId } from "../../types/music";
 import { clampMidi, midiToNoteName, noteNumber, pitchClassOf } from "./notes";
 import { isInScale } from "./scales";
@@ -85,4 +86,30 @@ export class ZoneTracker {
     if (clamped < start || clamped > end) this.current = raw;
     return this.current;
   }
+}
+
+/** Jumlah slot nada pada mode input "Jari": 4 jari × 2 tangan. */
+export const FINGER_SLOT_COUNT = FINGERS.length * 2;
+
+/**
+ * Slot nada untuk sebuah jari. Tangan kiri memegang nada rendah (slot 0–3: telunjuk→kelingking),
+ * tangan kanan nada tinggi (slot 4–7). Tangan yang sisinya tidak diketahui dianggap kiri.
+ */
+export function fingerSlot(side: HandSide, finger: FingerId): number {
+  return (side === "right" ? FINGERS.length : 0) + FINGERS.indexOf(finger);
+}
+
+/**
+ * Nada untuk tiap slot jari: derajat skala berurutan mulai dari nada dasar pada oktaf awal.
+ * Contoh C mayor oktaf 4 → C4 D4 E4 F4 | G4 A4 B4 C5. Skala lebih pendek (pentatonik)
+ * otomatis berlanjut ke oktaf berikutnya.
+ */
+export function buildFingerNotes(opts: Pick<NoteLayoutOptions, "root" | "scale" | "startOctave">): MidiNote[] {
+  const notes: MidiNote[] = [];
+  const start = noteNumber(opts.root, opts.startOctave);
+  for (let n = start; n <= 127 && notes.length < FINGER_SLOT_COUNT; n++) {
+    if (isInScale(n, opts.root, opts.scale)) notes.push(n);
+  }
+  while (notes.length < FINGER_SLOT_COUNT) notes.push(notes.at(-1) ?? clampMidi(start));
+  return notes;
 }

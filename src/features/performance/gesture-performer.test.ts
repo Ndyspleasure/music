@@ -1,13 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MockInstrumentEngine } from "../../services/audio/MockInstrumentEngine";
-import { buildNoteLayout } from "../music-theory/note-layout";
+import { buildFingerNotes, buildNoteLayout } from "../music-theory/note-layout";
 import { DRUM_NOTE_MS, GesturePerformer, type PerformerSettings } from "./gesture-performer";
 import { NoteManager } from "./note-manager";
 
 const zones = buildNoteLayout({ root: 0, scale: "major", quantize: true, startOctave: 4, octaveCount: 1 }); // 8 zona
 const base: PerformerSettings = {
   mode: "melodic",
+  noteInput: "position",
   zones,
+  fingerNotes: buildFingerNotes({ root: 0, scale: "major", startOctave: 4 }),
   root: 0,
   scale: "major",
   chordType: "triad",
@@ -141,6 +143,81 @@ describe("GesturePerformer — drum", () => {
   it("strike diabaikan di mode melodi", () => {
     const { engine, p } = setup();
     p.handleEvent({ type: "strike", handId: "h", x: 0.1, y: 0.9, velocity: 110, timestamp: 0 });
+    expect(engine.calls).toHaveLength(0);
+  });
+});
+
+const down = (handId: string, side: "left" | "right", finger: "index" | "middle" | "ring" | "pinky", t = 0) =>
+  ({ type: "finger-down", handId, side, finger, timestamp: t }) as const;
+
+describe("GesturePerformer — input jari", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("tiap jari memainkan nada berbeda tanpa bergantung posisi tangan", () => {
+    const { engine, p } = setup({ noteInput: "fingers" });
+    const played: string[] = [];
+    for (const [side, finger] of [
+      ["left", "index"],
+      ["left", "middle"],
+      ["left", "ring"],
+      ["left", "pinky"],
+      ["right", "index"],
+      ["right", "middle"],
+      ["right", "ring"],
+      ["right", "pinky"],
+    ] as const) {
+      p.handleEvent(down(`hand-${side}`, side, finger));
+      played.push(...engine.soundingNotes());
+      p.handleEvent({ type: "finger-up", handId: `hand-${side}`, finger, timestamp: 1 });
+      expect(engine.soundingNotes()).toEqual([]);
+    }
+    expect(played).toEqual(["0:60", "0:62", "0:64", "0:65", "0:67", "0:69", "0:71", "0:72"]);
+  });
+
+  it("posisi pointer dan pinch diabaikan; ganti jari langsung melepas nada lama", () => {
+    const { engine, p } = setup({ noteInput: "fingers" });
+    p.handleEvent({ type: "pinch-start", handId: "h", x: zoneX(5), y: 0.5, confidence: 1, timestamp: 0 });
+    expect(engine.soundingNotes()).toEqual([]);
+    p.handleEvent(down("h", "left", "index"));
+    p.handleEvent({ type: "pointer-move", handId: "h", x: zoneX(7), y: 0.5, confidence: 1, timestamp: 1 });
+    expect(engine.soundingNotes()).toEqual(["0:60"]);
+    p.handleEvent({ type: "finger-up", handId: "h", finger: "index", timestamp: 2 });
+    p.handleEvent(down("h", "left", "ring", 2));
+    expect(engine.soundingNotes()).toEqual(["0:64"]);
+  });
+
+  it("dua tangan bisa membunyikan dua nada bersamaan, hand-lost melepas milik tangan itu", () => {
+    const { engine, p } = setup({ noteInput: "fingers" });
+    p.handleEvent(down("hand-left", "left", "index"));
+    p.handleEvent(down("hand-right", "right", "index"));
+    expect(engine.soundingNotes().toSorted()).toEqual(["0:60", "0:67"]);
+    p.handleEvent({ type: "hand-lost", handId: "hand-right", timestamp: 3 });
+    expect(engine.soundingNotes()).toEqual(["0:60"]);
+  });
+
+  it("mode akor: jari memainkan akor dari derajat skalanya", () => {
+    const { engine, p } = setup({ noteInput: "fingers", mode: "chord" });
+    p.handleEvent(down("h", "left", "middle"));
+    expect(engine.soundingNotes().toSorted()).toEqual(["0:62", "0:65", "0:69"]);
+  });
+
+  it("mode drum: tiap jari memukul pad sendiri, strike posisi diabaikan", () => {
+    const { engine, p } = setup({ noteInput: "fingers", mode: "drums" });
+    p.handleEvent({ type: "strike", handId: "h", x: 0.1, y: 0.9, velocity: 110, timestamp: 0 });
+    expect(engine.calls.filter((c) => c.fn === "noteOn")).toHaveLength(0);
+    p.handleEvent(down("hand-left", "left", "index", 100)); // kick
+    p.handleEvent(down("hand-left", "left", "middle", 200)); // snare
+    p.handleEvent(down("hand-right", "right", "index", 300)); // crash
+    const hits = engine.calls.filter((c) => c.fn === "noteOn").map((c) => (c as { note: number }).note);
+    expect(hits).toEqual([36, 38, 49]);
+    vi.advanceTimersByTime(DRUM_NOTE_MS + 1);
+    expect(engine.soundingNotes()).toEqual([]);
+  });
+
+  it("finger event diabaikan pada input posisi", () => {
+    const { engine, p } = setup();
+    p.handleEvent(down("h", "left", "index"));
     expect(engine.calls).toHaveLength(0);
   });
 });

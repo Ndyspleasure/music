@@ -1,4 +1,5 @@
-import type { HandTrackingResult, Landmark, TrackedHand } from "../types/gesture";
+import type { FingerId, HandTrackingResult, Landmark, TrackedHand } from "../types/gesture";
+import { FINGER_TIPS, LM } from "../features/hand-tracking/landmarks";
 
 /**
  * Buat 21 landmark sintetis. (x,y) = posisi ujung telunjuk.
@@ -24,4 +25,19 @@ export function hand(id: string, x: number, y: number, pinch = 0.8, score = 0.95
 
 export function frame(timestamp: number, ...hands: TrackedHand[]): HandTrackingResult {
   return { timestamp, hands };
+}
+
+/**
+ * Tangan dengan ibu jari menyentuh jari tertentu: ujung jari itu diletakkan pada jarak
+ * `ratio` × ukuran tangan dari ujung ibu jari. Ibu jari dijauhkan dari telunjuk kecuali
+ * jari yang disentuh memang telunjuk.
+ */
+export function fingerHand(id: string, x: number, y: number, finger: FingerId | null, ratio = 0.1): TrackedHand {
+  const h = hand(id, x, y, 0.9);
+  if (!finger) return h;
+  const lm = h.landmarks;
+  const thumb = lm[LM.THUMB_TIP]!;
+  const scale = (0.15 + 0.15 * 0.7) / 2;
+  lm[FINGER_TIPS[finger]] = { x: thumb.x, y: thumb.y + ratio * scale, z: 0 };
+  return h;
 }

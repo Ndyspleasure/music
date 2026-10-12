@@ -30,6 +30,8 @@ Legenda verifikasi: **U** = unit test (Vitest) · **E** = e2e Playwright di Chro
 
 - [x] Pointer, pinch start/end dengan hysteresis, One Euro smoothing, confidence threshold (U)
 - [x] Note mapper + zona dengan hysteresis; tidak ada note-on berulang dalam satu zona (U)
+- [x] Input nada "Jari": sentuhan ibu jari ke telunjuk/tengah/manis/kelingking memilih nada tanpa memindah tangan (8 nada dua tangan, drum 8 pad) (U, E sintetis)
+- [ ] Kenyamanan & keandalan input "Jari" dengan tangan sungguhan, terutama jari manis/kelingking (M)
 - [x] Tangan hilang → note milik tangan itu dilepas; dua tangan tidak saling memotong note (U, E sintetis)
 - [x] Input alternatif: piano layar, pad, keyboard komputer (E)
 - [ ] Kenyamanan bermain melodi dengan tangan sungguhan dan latensi gesture → suara (M)

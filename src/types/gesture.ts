@@ -24,6 +24,11 @@ export interface HandTrackingResult {
   hands: TrackedHand[];
 }
 
+/** Jari yang dapat disentuhkan ke ibu jari untuk memainkan nada (mode input "Jari"). */
+export type FingerId = "index" | "middle" | "ring" | "pinky";
+
+export const FINGERS: readonly FingerId[] = ["index", "middle", "ring", "pinky"];
+
 export type SwipeDirection = "left" | "right" | "up" | "down";
 
 /** Event gesture ternormalisasi. Koordinat x/y sudah dalam ruang tampilan (sudah di-mirror bila perlu). */
@@ -34,6 +39,8 @@ export type GestureEvent =
   | { type: "pinch-end"; handId: string; timestamp: number }
   | { type: "strike"; handId: string; x: number; y: number; velocity: number; timestamp: number }
   | { type: "swipe"; handId: string; direction: SwipeDirection; velocity: number; timestamp: number }
+  | { type: "finger-down"; handId: string; side: HandSide; finger: FingerId; timestamp: number }
+  | { type: "finger-up"; handId: string; finger: FingerId; timestamp: number }
   | { type: "hand-lost"; handId: string; timestamp: number };
 
 /** Snapshot per-frame untuk overlay visual (tidak disimpan di state React). */
@@ -46,6 +53,8 @@ export interface HandFrameState {
   /** Rasio jarak ibu jari–telunjuk terhadap ukuran tangan. */
   pinchRatio: number;
   pinching: boolean;
+  /** Jari yang sedang menyentuh ibu jari (mode input "Jari"), atau null. */
+  finger: FingerId | null;
   /** Landmark mentah dalam ruang tampilan (untuk menggambar kerangka tangan). */
   landmarks: Landmark[];
 }
