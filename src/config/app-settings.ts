@@ -1,9 +1,17 @@
+import { NOTE_NAMINGS, type NoteNaming } from "../features/music-theory/note-naming";
 import { isScaleId } from "../features/music-theory/scales";
 import type { ChordType, PlayMode, ScaleId } from "../types/music";
 import { DEFAULT_EFFECTS, type EffectSettings } from "../services/audio/InstrumentEngine";
 import { GESTURE_PRESETS, sanitizeGestureConfig, type GestureConfig, type SensitivityPreset } from "./gesture-config";
 
 export type GlideMode = "retrigger" | "hold";
+
+/**
+ * Cara memilih nada lewat kamera:
+ * - "fingers": tiap jari yang disentuhkan ke ibu jari = nada berbeda, posisi tangan bebas.
+ * - "position": posisi horizontal tangan memilih zona nada, cubit untuk membunyikan.
+ */
+export type NoteInput = "fingers" | "position";
 
 export interface MetronomeSettings {
   enabled: boolean;
@@ -19,6 +27,7 @@ export interface MetronomeSettings {
 
 export interface AppSettings {
   mode: PlayMode;
+  noteInput: NoteInput;
   instrumentId: string;
   drumKitProgram: number;
   root: number;
@@ -40,7 +49,11 @@ export interface AppSettings {
   gesture: GestureConfig;
   mirror: boolean;
   showLandmarks: boolean;
+  /** Tampilkan panduan tangan bergambar (SVG) di atas area kamera. */
+  showHandGuide: boolean;
   showNoteNames: boolean;
+  /** Format nama nada: huruf (C D E), solmisasi (do re mi), atau angka (1 2 3). */
+  noteNaming: NoteNaming;
   preferFlats: boolean;
   metronome: MetronomeSettings;
   tutorialDone: boolean;
@@ -48,6 +61,7 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   mode: "melodic",
+  noteInput: "fingers",
   instrumentId: "gm-0",
   drumKitProgram: 0,
   root: 0,
@@ -67,7 +81,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   gesture: GESTURE_PRESETS.normal,
   mirror: true,
   showLandmarks: true,
+  showHandGuide: true,
   showNoteNames: true,
+  noteNaming: "letter",
   preferFlats: false,
   metronome: { enabled: false, bpm: 100, beatsPerBar: 4, volume: 0.7, countIn: true, quantizeLoop: true },
   tutorialDone: false,
@@ -89,6 +105,7 @@ export function sanitizeSettings(input: unknown): AppSettings {
   const startOctave = int(s.startOctave, d.startOctave, OCTAVE_LIMITS.minStart, OCTAVE_LIMITS.maxStart);
   return {
     mode: PLAY_MODES.includes(s.mode as PlayMode) ? (s.mode as PlayMode) : d.mode,
+    noteInput: s.noteInput === "fingers" || s.noteInput === "position" ? s.noteInput : d.noteInput,
     instrumentId: typeof s.instrumentId === "string" && s.instrumentId.length < 80 ? s.instrumentId : d.instrumentId,
     drumKitProgram: int(s.drumKitProgram, d.drumKitProgram, 0, 127),
     root: int(s.root, d.root, 0, 11),
@@ -128,7 +145,9 @@ export function sanitizeSettings(input: unknown): AppSettings {
     }),
     mirror: bool(s.mirror, d.mirror),
     showLandmarks: bool(s.showLandmarks, d.showLandmarks),
+    showHandGuide: bool(s.showHandGuide, d.showHandGuide),
     showNoteNames: bool(s.showNoteNames, d.showNoteNames),
+    noteNaming: NOTE_NAMINGS.includes(s.noteNaming as NoteNaming) ? (s.noteNaming as NoteNaming) : d.noteNaming,
     preferFlats: bool(s.preferFlats, d.preferFlats),
     metronome: {
       enabled: bool(metro.enabled, d.metronome.enabled),

@@ -1,7 +1,8 @@
 import { CheckCircle2, Circle } from "lucide-react";
 import { useApp, useController } from "../../app/context";
 import { cx } from "../../utils/cx";
-import { Button } from "../ui/primitives";
+import { HandGuide } from "../hand-guide/HandGuide";
+import { Button, Toggle } from "../ui/primitives";
 import { Modal } from "./Modal";
 
 /** Panduan interaktif: langkah tercentang otomatis saat pengguna melakukannya. */
@@ -11,6 +12,8 @@ export function TutorialDialog() {
   const progress = useApp((s) => s.tutorialProgress);
   const session = useApp((s) => s.session);
   const audio = useApp((s) => s.audio.status);
+  const fingers = useApp((s) => s.settings.noteInput === "fingers");
+  const showGuide = useApp((s) => s.settings.showHandGuide);
 
   const steps = [
     {
@@ -21,18 +24,32 @@ export function TutorialDialog() {
     {
       done: progress.handSeen,
       title: "Tunjukkan tangan",
-      body: "Angkat satu tangan sekitar 40–80 cm dari kamera, telapak menghadap kamera. Lingkaran pointer akan mengikuti ujung telunjuk.",
+      body: fingers
+        ? "Angkat satu atau dua tangan sekitar 40–80 cm dari kamera, telapak menghadap kamera. Nama nada muncul di ujung tiap jari."
+        : "Angkat satu tangan sekitar 40–80 cm dari kamera, telapak menghadap kamera. Lingkaran pointer akan mengikuti ujung telunjuk.",
     },
-    {
-      done: progress.pinched,
-      title: "Cubit untuk membunyikan",
-      body: "Rapatkan ujung ibu jari dan telunjuk. Lingkaran mengecil lalu menyala kuning saat cubitan terbaca.",
-    },
-    {
-      done: progress.noteFromGesture,
-      title: "Mainkan melodi",
-      body: "Sambil mencubit, geser tangan ke kiri–kanan untuk berpindah nada. Buka cubitan untuk berhenti.",
-    },
+    fingers
+      ? {
+          done: progress.pinched,
+          title: "Sentuhkan jari ke ibu jari",
+          body: "Tempelkan ujung ibu jari ke ujung telunjuk, jari tengah, jari manis, atau kelingking. Label jari menyala kuning saat sentuhan terbaca.",
+        }
+      : {
+          done: progress.pinched,
+          title: "Cubit untuk membunyikan",
+          body: "Rapatkan ujung ibu jari dan telunjuk. Lingkaran mengecil lalu menyala kuning saat cubitan terbaca.",
+        },
+    fingers
+      ? {
+          done: progress.noteFromGesture,
+          title: "Mainkan melodi",
+          body: "Tangan di sisi kiri layar: telunjuk→kelingking = Do Re Mi Fa. Tangan di sisi kanan layar: Sol La Si Do. Tangan tidak perlu berpindah — cukup ganti jari. Buka jari untuk berhenti.",
+        }
+      : {
+          done: progress.noteFromGesture,
+          title: "Mainkan melodi",
+          body: "Sambil mencubit, geser tangan ke kiri–kanan untuk berpindah nada. Buka cubitan untuk berhenti.",
+        },
     {
       done: false,
       title: "Jelajahi",
@@ -42,6 +59,9 @@ export function TutorialDialog() {
 
   return (
     <Modal open={open} onClose={() => controller.openTutorial(false)} title="Cara bermain">
+      <div className="mb-4 rounded-xl border border-stage-700 bg-stage-900 p-3">
+        <HandGuide />
+      </div>
       <ol className="flex flex-col gap-3">
         {steps.map((step, i) => (
           <li
@@ -68,8 +88,23 @@ export function TutorialDialog() {
           <li>Cahaya dari depan dan latar yang tidak ramai membuat deteksi jauh lebih stabil.</li>
           <li>Nada terasa melompat-lompat? Pilih sensitivitas “Stabil” di tab Gesture.</li>
           <li>Dua tangan bisa bermain bersamaan; tiap tangan memegang nadanya sendiri.</li>
+          <li>
+            Lebih suka memilih nada dengan posisi tangan? Ganti “Cara memilih nada” ke “Posisi tangan” di tab Musik.
+          </li>
+          <li>
+            Jari manis sering ikut jari tengah. Saat menyentuh satu jari, biarkan jari lain tetap lurus dan agak
+            renggang. Bilah kecil di bawah tiap label jari menunjukkan seberapa dekat jari itu ke ibu jari.
+          </li>
           <li>Esc menghentikan semua bunyi kapan saja.</li>
         </ul>
+      </div>
+      <div className="mt-4">
+        <Toggle
+          label="Tampilkan panduan tangan di layar kamera"
+          hint="Bisa juga dinyalakan/dimatikan lewat tombol “Panduan” di pojok kanan atas kamera."
+          checked={showGuide}
+          onChange={(showHandGuide) => controller.updateSettings({ showHandGuide })}
+        />
       </div>
       <div className="mt-4 flex justify-end gap-2">
         {audio !== "ready" && (

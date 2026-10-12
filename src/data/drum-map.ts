@@ -23,6 +23,26 @@ export const DRUM_PADS: readonly DrumPad[] = [
 
 export const DRUM_GRID = { columns: 4, rows: 2 } as const;
 
+/**
+ * Pad untuk mode input "Jari" (urutan slot jari): tangan kiri telunjuk→kelingking = kick, snare,
+ * hi-hat tutup, hi-hat buka; tangan kanan = crash, tom tinggi, tom rendah, ride.
+ */
+export const FINGER_DRUM_PAD_IDS: readonly string[] = [
+  "kick",
+  "snare",
+  "closed-hat",
+  "open-hat",
+  "crash",
+  "high-tom",
+  "low-tom",
+  "ride",
+];
+
+export function fingerDrumPad(slot: number): DrumPad | undefined {
+  const id = FINGER_DRUM_PAD_IDS[slot];
+  return DRUM_PADS.find((p) => p.id === id);
+}
+
 /** Pad pada posisi tampilan (x,y 0..1). */
 export function drumPadAt(x: number, y: number): DrumPad | undefined {
   const col = Math.min(DRUM_GRID.columns - 1, Math.max(0, Math.floor(x * DRUM_GRID.columns)));

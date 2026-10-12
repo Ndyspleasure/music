@@ -15,7 +15,7 @@ import type { PresetInfo } from "../../types/instrument";
 import type { MidiNote, NoteZone } from "../../types/music";
 import { GestureInterpreter } from "../hand-tracking/gesture-interpreter";
 import { buildCatalog, instrumentPatch, MAIN_BANK_ID, USER_BANK_ID } from "../instruments/catalog";
-import { buildNoteLayout } from "../music-theory/note-layout";
+import { buildFingerNotes, buildNoteLayout } from "../music-theory/note-layout";
 import { Looper } from "../recording/looper";
 import { Metronome } from "../recording/metronome";
 import { exportLoopToMidi } from "../recording/midi-export";
@@ -38,6 +38,8 @@ export interface FrameSnapshot {
   frame: GestureFrame;
   targets: HandTarget[];
   zones: NoteZone[];
+  /** Nada per slot jari (mode input "Jari"). */
+  fingerNotes: MidiNote[];
 }
 
 const TRANSPORT_INTERVAL_MS = 25;
@@ -66,6 +68,7 @@ export class PerformanceController {
   private metronome: Metronome;
   private looper: Looper;
   private zones: NoteZone[] = [];
+  private fingerNotes: MidiNote[] = [];
   private video: HTMLVideoElement | null = null;
   private frameListeners = new Set<(s: FrameSnapshot) => void>();
   private drumHitListeners = new Set<(pad: DrumPad, velocity: number) => void>();
@@ -98,6 +101,7 @@ export class PerformanceController {
       maxHands: settings.maxHands,
     });
     this.zones = this.computeZones(settings);
+    this.fingerNotes = buildFingerNotes(settings);
     this.performer = new GesturePerformer(this.notes, this.performerSettings(settings), {
       controlChange: (ch, cc, v) => this.engine.controlChange(ch, cc, v),
       onOctaveShift: (d) => this.shiftOctave(d),
@@ -328,7 +332,9 @@ export class PerformanceController {
       this.store.setState({ handsDetected: frame.hands.length });
     }
     if (frame.hands.length > 0) this.markTutorial("handSeen");
-    if (frame.events.some((e) => e.type === "pinch-start")) this.markTutorial("pinched");
+    if (frame.events.some((e) => e.type === (this.settings.noteInput === "fingers" ? "finger-down" : "pinch-start"))) {
+      this.markTutorial("pinched");
+    }
     this.emitFrame(frame);
   }
 
@@ -350,8 +356,17 @@ export class PerformanceController {
     return this.zones;
   }
 
+  get fingerNoteMap(): MidiNote[] {
+    return this.fingerNotes;
+  }
+
   private emitFrame(frame: GestureFrame): void {
-    const snap: FrameSnapshot = { frame, targets: this.performer.targets(), zones: this.zones };
+    const snap: FrameSnapshot = {
+      frame,
+      targets: this.performer.targets(),
+      zones: this.zones,
+      fingerNotes: this.fingerNotes,
+    };
     for (const l of this.frameListeners) l(snap);
   }
 
@@ -425,6 +440,7 @@ export class PerformanceController {
     if (merged.metronome !== prev.metronome) this.applyMetronome(prev);
 
     this.zones = this.computeZones(merged);
+    this.fingerNotes = buildFingerNotes(merged);
     this.performer.updateSettings(this.performerSettings(merged));
   }
 
@@ -451,7 +467,9 @@ export class PerformanceController {
   private performerSettings(s: AppSettings) {
     return {
       mode: s.mode,
+      noteInput: s.noteInput,
       zones: this.zones,
+      fingerNotes: this.fingerNotes,
       root: s.root,
       scale: s.scale,
       chordType: s.chordType,

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { buildChord } from "./chords";
-import { buildNoteLayout, layoutRange, ZoneTracker } from "./note-layout";
+import {
+  buildFingerNotes,
+  buildNoteLayout,
+  FINGER_SLOT_COUNT,
+  fingerSlot,
+  layoutRange,
+  ZoneTracker,
+} from "./note-layout";
 import { clampMidi, midiToFrequency, midiToNoteName, noteNumber, octaveOf, pitchClassName } from "./notes";
 import { isInScale, quantizeToScale, SCALES, scaleNotesInRange } from "./scales";
 
@@ -80,6 +87,32 @@ describe("note layout", () => {
   it("rentang tidak pernah melewati 127", () => {
     const zones = buildNoteLayout({ root: 0, scale: "chromatic", quantize: false, startOctave: 9, octaveCount: 4 });
     expect(Math.max(...zones.map((z) => z.note))).toBe(127);
+  });
+});
+
+describe("finger notes", () => {
+  it("C mayor oktaf 4: kiri C D E F, kanan G A B C", () => {
+    expect(buildFingerNotes({ root: 0, scale: "major", startOctave: 4 })).toEqual([60, 62, 64, 65, 67, 69, 71, 72]);
+  });
+
+  it("pentatonik berlanjut ke oktaf berikutnya", () => {
+    expect(buildFingerNotes({ root: 9, scale: "minor-pentatonic", startOctave: 3 })).toEqual([
+      57, 60, 62, 64, 67, 69, 72, 74,
+    ]);
+  });
+
+  it("selalu 8 nada dan tidak melewati 127", () => {
+    const notes = buildFingerNotes({ root: 11, scale: "major", startOctave: 9 });
+    expect(notes).toHaveLength(FINGER_SLOT_COUNT);
+    expect(Math.max(...notes)).toBeLessThanOrEqual(127);
+  });
+
+  it("slot: tangan kiri 0–3, tangan kanan 4–7", () => {
+    expect(fingerSlot("left", "index")).toBe(0);
+    expect(fingerSlot("left", "pinky")).toBe(3);
+    expect(fingerSlot("right", "index")).toBe(4);
+    expect(fingerSlot("right", "pinky")).toBe(7);
+    expect(fingerSlot("unknown", "middle")).toBe(1);
   });
 });
 

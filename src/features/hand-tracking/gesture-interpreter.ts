@@ -1,12 +1,15 @@
 import { DEFAULT_GESTURE_CONFIG, sanitizeGestureConfig, type GestureConfig } from "../../config/gesture-config";
-import type {
-  GestureEvent,
-  GestureFrame,
-  HandFrameState,
-  HandSide,
-  HandTrackingResult,
-  TrackedHand,
+import {
+  FINGERS,
+  type GestureEvent,
+  type GestureFrame,
+  type HandFrameState,
+  type HandSide,
+  type HandTrackingResult,
+  type Landmark,
+  type TrackedHand,
 } from "../../types/gesture";
+import { FingerTouchDetector } from "./finger-touch";
 import { LM, mirrorLandmarks, pinchRatio } from "./landmarks";
 import { OneEuroFilter } from "./one-euro-filter";
 
@@ -23,6 +26,8 @@ interface HandState {
   lastSeen: number;
   lastSample: number;
   pinching: boolean;
+  /** Deteksi jari yang menyentuh ibu jari (maksimal satu per tangan). */
+  fingers: FingerTouchDetector;
   strikeArmed: boolean;
   lastStrikeAt: number;
   lastSwipeAt: number;
@@ -36,6 +41,8 @@ export interface GestureInterpreterOptions {
   maxHands?: number;
 }
 
+/** Satu tangan baru berganti sisi bila pergelangan melewati tengah layar sejauh ini. */
+const SIDE_HYSTERESIS = 0.1;
 /** Bobot EMA untuk estimasi kecepatan. */
 const VELOCITY_SMOOTHING = 0.5;
 
@@ -94,10 +101,11 @@ export class GestureInterpreter {
       .toSorted((a, b) => b.score - a.score)
       .slice(0, this.maxHands);
 
+    const sides = this.screenSides(visible);
     const seen = new Set<string>();
-    for (const hand of visible) {
+    for (const [i, hand] of visible.entries()) {
       seen.add(hand.id);
-      frames.push(this.updateHand(hand, now, events));
+      frames.push(this.updateHand(hand, sides[i] ?? hand.side, now, events));
     }
 
     for (const [id, h] of this.hands) {
@@ -111,7 +119,33 @@ export class GestureInterpreter {
     return { timestamp: now, events, hands: frames };
   }
 
-  private updateHand(hand: TrackedHand, now: number, events: GestureEvent[]): HandFrameState {
+  /**
+   * Sisi tangan menurut posisinya di layar (ruang tampilan), bukan label handedness MediaPipe.
+   * Tangan yang tampak di kiri layar = "kiri", sehingga yang dilihat pengguna di kamera (cermin)
+   * selalu cocok dengan panduan dan peta jari. Dua tangan: urut menurut posisi pergelangan.
+   * Satu tangan: kiri/kanan dari tengah layar, dengan hysteresis agar tidak berganti di tengah.
+   */
+  private screenSides(visible: TrackedHand[]): HandSide[] {
+    const wristX = visible.map((h) => {
+      const x = h.landmarks[LM.WRIST]?.x ?? 0.5;
+      return this.mirror ? 1 - x : x;
+    });
+    if (visible.length >= 2) {
+      const order = wristX.map((x, i) => [x, i] as const).toSorted((a, b) => a[0] - b[0]);
+      const sides: HandSide[] = [];
+      order.forEach(([, i], rank) => (sides[i] = rank === 0 ? "left" : "right"));
+      return sides;
+    }
+    return visible.map((h, i) => {
+      const x = wristX[i] ?? 0.5;
+      const prev = this.hands.get(h.id)?.side;
+      if (prev === "left" && x < 0.5 + SIDE_HYSTERESIS) return "left";
+      if (prev === "right" && x > 0.5 - SIDE_HYSTERESIS) return "right";
+      return x < 0.5 ? "left" : "right";
+    });
+  }
+
+  private updateHand(hand: TrackedHand, side: HandSide, now: number, events: GestureEvent[]): HandFrameState {
     const cfg = this.config;
     const lm = mirrorLandmarks(hand.landmarks, this.mirror);
     const tip = lm[LM.INDEX_TIP] ?? { x: 0.5, y: 0.5, z: 0 };
@@ -121,7 +155,7 @@ export class GestureInterpreter {
     if (!state) {
       state = {
         id: hand.id,
-        side: hand.side,
+        side,
         fx: new OneEuroFilter(cfg.smoothingMinCutoff, cfg.smoothingBeta),
         fy: new OneEuroFilter(cfg.smoothingMinCutoff, cfg.smoothingBeta),
         x: tip.x,
@@ -131,6 +165,7 @@ export class GestureInterpreter {
         lastSeen: now,
         lastSample: now,
         pinching: false,
+        fingers: new FingerTouchDetector(),
         strikeArmed: true,
         lastStrikeAt: -Infinity,
         lastSwipeAt: -Infinity,
@@ -152,7 +187,7 @@ export class GestureInterpreter {
     state.y = y;
     state.lastSample = now;
     state.lastSeen = now;
-    state.side = hand.side;
+    state.side = side;
 
     const confidence = hand.score;
     events.push({ type: "pointer-move", handId: hand.id, x, y, confidence, timestamp: now });
@@ -166,6 +201,8 @@ export class GestureInterpreter {
       state.pinching = false;
       events.push({ type: "pinch-end", handId: hand.id, timestamp: now });
     }
+
+    this.updateFinger(state, lm, now, events);
 
     // Pukulan (gerak turun cepat) dengan re-arm + cooldown.
     if (state.strikeArmed && state.vy > cfg.strikeVelocity && now - state.lastStrikeAt >= cfg.strikeCooldownMs) {
@@ -200,10 +237,30 @@ export class GestureInterpreter {
       });
     }
 
-    return { handId: hand.id, side: state.side, x, y, pinchRatio: ratio, pinching: state.pinching, landmarks: lm };
+    return {
+      handId: hand.id,
+      side: state.side,
+      x,
+      y,
+      pinchRatio: ratio,
+      pinching: state.pinching,
+      finger: state.fingers.active,
+      fingerScores: FINGERS.map((f) => state.fingers.scores[f]),
+      landmarks: lm,
+    };
+  }
+
+  private updateFinger(state: HandState, lm: Landmark[], now: number, events: GestureEvent[]): void {
+    const change = state.fingers.update(lm, this.config.pinchStart, this.config.pinchRelease);
+    if (change.up) events.push({ type: "finger-up", handId: state.id, finger: change.up, timestamp: now });
+    if (change.down) {
+      events.push({ type: "finger-down", handId: state.id, side: state.side, finger: change.down, timestamp: now });
+    }
   }
 
   private loseHand(h: HandState, now: number, events: GestureEvent[]): void {
+    const { up } = h.fingers.reset();
+    if (up) events.push({ type: "finger-up", handId: h.id, finger: up, timestamp: now });
     if (h.pinching) events.push({ type: "pinch-end", handId: h.id, timestamp: now });
     events.push({ type: "hand-lost", handId: h.id, timestamp: now });
   }

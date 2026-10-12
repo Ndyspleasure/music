@@ -2,7 +2,17 @@ import { expect, test, type Page } from "@playwright/test";
 import { enableAudio, openApp, peakLevel } from "./helpers.ts";
 
 /** Suntikkan frame tangan sintetis ke pipeline asli (interpreter → performer → engine) lewat hook ?debug=1. */
-async function injectHand(page: Page, frames: { t: number; x: number; y: number; pinch: number }[]) {
+interface HandFrame {
+  t: number;
+  x: number;
+  y: number;
+  pinch: number;
+  /** Landmark ujung jari (12 tengah, 16 manis, 20 kelingking) yang ditempelkan ke ibu jari. */
+  touch?: number;
+  side?: "left" | "right";
+}
+
+async function injectHand(page: Page, frames: HandFrame[]) {
   await page.evaluate((list) => {
     type Ctl = { handleTracking: (r: unknown) => void };
     const ctl = (window as unknown as { __gestura: { controller: Ctl } }).__gestura.controller;
@@ -16,9 +26,11 @@ async function injectHand(page: Page, frames: { t: number; x: number; y: number;
       lm[17] = { x: f.x + size * 0.35, y: f.y + size * 0.6, z: 0 };
       lm[8] = { x: f.x, y: f.y, z: 0 };
       lm[4] = { x: f.x - (f.pinch * (size * 1.7)) / 2, y: f.y, z: 0 };
+      if (f.touch) lm[f.touch] = { x: lm[4].x, y: f.y + 0.01, z: 0 };
+      const side = f.side ?? "right";
       ctl.handleTracking({
         timestamp: f.t,
-        hands: f.pinch < 0 ? [] : [{ id: "hand-right", side: "right", score: 0.98, landmarks: lm }],
+        hands: f.pinch < 0 ? [] : [{ id: `hand-${side}`, side, score: 0.98, landmarks: lm }],
       });
     }
   }, frames);
@@ -50,9 +62,59 @@ test.describe("Kamera, MediaPipe, dan gesture", () => {
     expect(errors.filter((e) => !/WebGL|GPU|gl_/i.test(e))).toEqual([]);
   });
 
-  test("pinch sintetis memainkan nada zona, berpindah zona, dan tangan hilang melepas note", async ({ page }) => {
+  test("input jari: tiap jari membunyikan nada berbeda tanpa memindah tangan", async ({ page }) => {
     await openApp(page, { debug: true });
     await enableAudio(page);
+    // Default input "Jari", C mayor oktaf 4. Kamera x 0.3 → layar x 0.7 (cermin) = tangan kanan:
+    // telunjuk→kelingking = G4 A4 B4 C5.
+    await injectHand(page, [
+      { t: 1000, x: 0.3, y: 0.5, pinch: 0.9 },
+      { t: 1033, x: 0.3, y: 0.5, pinch: 0.9, touch: 12 },
+    ]);
+    await expect(page.getByTestId("active-notes")).toHaveText("A4");
+    expect(await peakLevel(page, 400)).toBeGreaterThan(0.005);
+    // Ganti ke jari manis di posisi yang sama.
+    await injectHand(page, [{ t: 1066, x: 0.3, y: 0.5, pinch: 0.9, touch: 16 }]);
+    await expect(page.getByTestId("active-notes")).toHaveText("B4");
+    // Buka jari → nada berhenti.
+    await injectHand(page, [{ t: 1100, x: 0.3, y: 0.5, pinch: 0.9 }]);
+    await expect(page.getByTestId("active-notes")).toHaveText("—");
+    // Nama nada solmisasi / angka (relatif terhadap nada dasar C).
+    await page.getByRole("tab", { name: "Musik" }).click();
+    await page.getByRole("radio", { name: "Do Re Mi" }).click();
+    await injectHand(page, [{ t: 1133, x: 0.3, y: 0.5, pinch: 0.9, touch: 12 }]);
+    await expect(page.getByTestId("active-notes")).toHaveText("la");
+    await page.getByRole("radio", { name: "1 2 3" }).click();
+    await expect(page.getByTestId("active-notes")).toHaveText("6");
+  });
+
+  test("panduan tangan SVG: tampil saat sesi, mengikuti jari pengguna, dan bisa dimatikan", async ({ page }) => {
+    await openApp(page, { debug: true });
+    await page.getByRole("button", { name: "Mulai Bermain" }).click();
+    await expect(page.getByText("Kamera aktif")).toBeVisible({ timeout: 45_000 });
+    const guide = page.getByRole("region", { name: "Panduan tangan" });
+    await expect(guide).toBeVisible();
+    await expect(guide.getByRole("img", { name: /Tangan kiri: telunjuk C4/ })).toBeVisible();
+    await page.evaluate(() => {
+      type Ctl = { tracker?: { stop?: () => void } };
+      (window as unknown as { __gestura: { controller: Ctl } }).__gestura.controller.tracker?.stop?.();
+    });
+    await injectHand(page, [{ t: 5000, x: 0.5, y: 0.5, pinch: 0.9, touch: 16 }]);
+    await expect(guide.getByRole("img", { name: /Ibu jari sedang menyentuh jari manis/ })).toBeVisible();
+    const toggle = page.getByRole("button", { name: "Panduan", exact: true });
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await toggle.click();
+    await expect(guide).toBeHidden();
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await toggle.click();
+    await expect(guide).toBeVisible();
+  });
+
+  test("input posisi: pinch memainkan nada zona, berpindah zona, dan tangan hilang melepas note", async ({ page }) => {
+    await openApp(page, { debug: true });
+    await enableAudio(page);
+    await page.getByRole("tab", { name: "Musik" }).click();
+    await page.getByRole("radio", { name: "Posisi tangan" }).click();
     // Default: C mayor, C4–C5 → 8 zona. Mirror aktif: x kamera 0.94 → x tampilan 0.06 (zona 0 = C4).
     await injectHand(page, [
       { t: 1000, x: 0.94, y: 0.5, pinch: 0.9 },
