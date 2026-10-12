@@ -657,7 +657,8 @@ Menjawab keluhan bahwa berpindah zona melelahkan dan lambat: nada dipilih dari *
   - Jari baru diterima jika skornya < 0.4 (rapat) atau tetap menjadi yang terdekat selama 2 frame. Ibu jari yang hanya lewat di dekat jari tengah saat menuju jari manis tidak membunyikan nada.
   - Pindah jari tanpa membuka tangan butuh selisih skor ≥ 0.25 plus konfirmasi 2 frame, supaya tidak berkedip di antara dua jari yang sama-sama dekat.
   - Skor per jari dikirim ke overlay (`HandFrameState.fingerScores`) dan ditampilkan sebagai bilah kedekatan di bawah label tiap ujung jari.
-- Slot jari (`fingerSlot`): tangan kiri telunjuk→kelingking = slot 0–3, tangan kanan = slot 4–7. Tangan dengan sisi tidak diketahui dianggap kiri.
+- Slot jari (`fingerSlot`): tangan kiri telunjuk→kelingking = slot 0–3, tangan kanan = slot 4–7.
+- Sisi tangan ditentukan dari **posisi di layar** (ruang tampilan setelah cermin), bukan dari label handedness MediaPipe. Dengan dua tangan, yang pergelangannya lebih kiri di layar menjadi "kiri". Dengan satu tangan, sisinya ditentukan dari tengah layar dengan hysteresis 0.1. Alasannya: label handedness bergantung pada asumsi cermin model dan bisa tertukar, sedangkan pengguna melihat dirinya di tampilan cermin dan panduan menggambar tangan kiri di kiri.
 - `buildFingerNotes` mengisi 8 slot dengan derajat skala berurutan mulai dari nada dasar pada oktaf awal (C mayor oktaf 4 → C4 D4 E4 F4 | G4 A4 B4 C5). Mode akor membangun akor dari nada slot itu. Mode drum memakai `FINGER_DRUM_PAD_IDS` (kiri: kick, snare, hi-hat tutup, hi-hat buka; kanan: crash, tom tinggi, tom rendah, ride).
 - Pada input ini pinch, zona, dan strike posisi diabaikan. Swipe oktaf hanya berlaku saat tidak ada jari yang menempel. Tangan hilang mengirim `finger-up` dan melepas note milik tangan itu.
 - Setelan `noteInput: "fingers" | "position"` ada di tab Musik. Overlay menulis nama nada di ujung tiap jari dan menampilkan bilah legenda 4 | 4.

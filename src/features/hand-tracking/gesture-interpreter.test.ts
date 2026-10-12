@@ -161,3 +161,38 @@ describe("GestureInterpreter — sentuhan jari", () => {
     expect(fingerEvents(f.events)).toEqual(["finger-up:index"]);
   });
 });
+
+const sides = (f: { hands: { handId: string; side: string }[] }) =>
+  Object.fromEntries(f.hands.map((h) => [h.handId, h.side]));
+
+describe("GestureInterpreter — sisi tangan dari posisi layar", () => {
+  it("dua tangan: yang tampak di kiri layar = kiri, apa pun label MediaPipe", () => {
+    const gi = new GestureInterpreter({ config: cfg, mirror: true });
+    // Label MediaPipe sengaja tertukar: "hand-right" ada di kiri layar (kamera x 0.8 → layar 0.2).
+    const f = gi.process(frame(0, hand("hand-right", 0.8, 0.5), hand("hand-left", 0.2, 0.5)));
+    expect(sides(f)).toEqual({ "hand-right": "left", "hand-left": "right" });
+  });
+
+  it("tanpa mirror memakai koordinat kamera apa adanya", () => {
+    const gi = new GestureInterpreter({ config: cfg, mirror: false });
+    const f = gi.process(frame(0, hand("hand-a", 0.8, 0.5), hand("hand-b", 0.2, 0.5)));
+    expect(sides(f)).toEqual({ "hand-a": "right", "hand-b": "left" });
+  });
+
+  it("satu tangan: sisi dari tengah layar dengan hysteresis", () => {
+    const gi = new GestureInterpreter({ config: cfg, mirror: false });
+    let t = 0;
+    const at = (x: number) => gi.process(frame((t += 33), hand("h", x, 0.5))).hands[0]?.side;
+    expect(at(0.3)).toBe("left");
+    expect(at(0.55)).toBe("left"); // belum melewati tengah + hysteresis
+    expect(at(0.7)).toBe("right");
+    expect(at(0.45)).toBe("right");
+    expect(at(0.3)).toBe("left");
+  });
+
+  it("finger-down membawa sisi layar", () => {
+    const gi = new GestureInterpreter({ config: cfg, mirror: true });
+    const f = gi.process(frame(0, fingerHand("hand-right", 0.9, 0.5, "middle")));
+    expect(f.events.find((e) => e.type === "finger-down")).toMatchObject({ side: "left", finger: "middle" });
+  });
+});

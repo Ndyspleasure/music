@@ -65,23 +65,24 @@ test.describe("Kamera, MediaPipe, dan gesture", () => {
   test("input jari: tiap jari membunyikan nada berbeda tanpa memindah tangan", async ({ page }) => {
     await openApp(page, { debug: true });
     await enableAudio(page);
-    // Default input "Jari", C mayor oktaf 4: kanan telunjuk→kelingking = G4 A4 B4 C5.
+    // Default input "Jari", C mayor oktaf 4. Kamera x 0.3 → layar x 0.7 (cermin) = tangan kanan:
+    // telunjuk→kelingking = G4 A4 B4 C5.
     await injectHand(page, [
-      { t: 1000, x: 0.5, y: 0.5, pinch: 0.9 },
-      { t: 1033, x: 0.5, y: 0.5, pinch: 0.9, touch: 12 },
+      { t: 1000, x: 0.3, y: 0.5, pinch: 0.9 },
+      { t: 1033, x: 0.3, y: 0.5, pinch: 0.9, touch: 12 },
     ]);
     await expect(page.getByTestId("active-notes")).toHaveText("A4");
     expect(await peakLevel(page, 400)).toBeGreaterThan(0.005);
     // Ganti ke jari manis di posisi yang sama.
-    await injectHand(page, [{ t: 1066, x: 0.5, y: 0.5, pinch: 0.9, touch: 16 }]);
+    await injectHand(page, [{ t: 1066, x: 0.3, y: 0.5, pinch: 0.9, touch: 16 }]);
     await expect(page.getByTestId("active-notes")).toHaveText("B4");
     // Buka jari → nada berhenti.
-    await injectHand(page, [{ t: 1100, x: 0.5, y: 0.5, pinch: 0.9 }]);
+    await injectHand(page, [{ t: 1100, x: 0.3, y: 0.5, pinch: 0.9 }]);
     await expect(page.getByTestId("active-notes")).toHaveText("—");
     // Nama nada solmisasi / angka (relatif terhadap nada dasar C).
     await page.getByRole("tab", { name: "Musik" }).click();
     await page.getByRole("radio", { name: "Do Re Mi" }).click();
-    await injectHand(page, [{ t: 1133, x: 0.5, y: 0.5, pinch: 0.9, touch: 12 }]);
+    await injectHand(page, [{ t: 1133, x: 0.3, y: 0.5, pinch: 0.9, touch: 12 }]);
     await expect(page.getByTestId("active-notes")).toHaveText("la");
     await page.getByRole("radio", { name: "1 2 3" }).click();
     await expect(page.getByTestId("active-notes")).toHaveText("6");

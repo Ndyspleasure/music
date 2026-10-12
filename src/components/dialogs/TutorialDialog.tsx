@@ -43,7 +43,7 @@ export function TutorialDialog() {
       ? {
           done: progress.noteFromGesture,
           title: "Mainkan melodi",
-          body: "Tangan kiri: telunjuk→kelingking = Do Re Mi Fa. Tangan kanan: Sol La Si Do. Tangan tidak perlu berpindah — cukup ganti jari. Buka jari untuk berhenti.",
+          body: "Tangan di sisi kiri layar: telunjuk→kelingking = Do Re Mi Fa. Tangan di sisi kanan layar: Sol La Si Do. Tangan tidak perlu berpindah — cukup ganti jari. Buka jari untuk berhenti.",
         }
       : {
           done: progress.noteFromGesture,
